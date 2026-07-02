@@ -1,0 +1,23 @@
+# Environment
+.env
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# Logs
+*.log
+
+# Temp
+tmp/
+temp/
+
+# FPDF font cache (auto-generated)
+lib/font/
