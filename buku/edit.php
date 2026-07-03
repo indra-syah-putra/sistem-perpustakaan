@@ -11,6 +11,11 @@ $b = $stmt->fetch();
 
 if (!$b) { $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Buku tidak ditemukan']; header('Location: index.php'); exit; }
 
+$kategori_list = $db->query("SELECT * FROM kategori ORDER BY nama_kategori")->fetchAll();
+$stmtKat = $db->prepare("SELECT id_kategori FROM buku_kategori WHERE id_buku = :id");
+$stmtKat->execute([':id' => $id]);
+$selected = $stmtKat->fetchAll(\PDO::FETCH_COLUMN);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     try {
