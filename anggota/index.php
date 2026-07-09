@@ -12,16 +12,16 @@ $search = $_GET['search'] ?? '';
 $where = '';
 $params = [];
 if ($search) {
-    $where = "WHERE nama LIKE :search OR no_anggota LIKE :search2 OR email LIKE :search3";
+    $where = "WHERE a.nama LIKE :search OR a.no_anggota LIKE :search2 OR a.email LIKE :search3";
     $params = [':search' => "%$search%", ':search2' => "%$search%", ':search3' => "%$search%"];
 }
 
-$countStmt = $db->prepare("SELECT COUNT(*) FROM anggota $where");
+$countStmt = $db->prepare("SELECT COUNT(*) FROM anggota a $where");
 $countStmt->execute($params);
 $total = $countStmt->fetchColumn();
 $total_pages = ceil($total / $limit);
 
-$stmt = $db->prepare("SELECT * FROM anggota $where ORDER BY created_at DESC LIMIT $limit OFFSET $offset");
+$stmt = $db->prepare("SELECT a.*, k.nama_kelas FROM anggota a LEFT JOIN kelas k ON a.id_kelas = k.id_kelas $where ORDER BY a.created_at DESC LIMIT $limit OFFSET $offset");
 $stmt->execute($params);
 $anggota = $stmt->fetchAll();
 ?>
@@ -52,7 +52,7 @@ $anggota = $stmt->fetchAll();
                         <td><?= htmlspecialchars($a['no_anggota']) ?></td>
                         <td><?= htmlspecialchars($a['nisn'] ?: '-') ?></td>
                         <td><?= htmlspecialchars($a['nama']) ?></td>
-                        <td><?= htmlspecialchars($a['kelas'] ?: '-') ?></td>
+                        <td><?= htmlspecialchars($a['nama_kelas'] ?: '-') ?></td>
                         <td><?= status_badge($a['status']) ?></td>
                         <td>
                             <a href="edit.php?id=<?= $a['id_anggota'] ?>" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>

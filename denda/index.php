@@ -7,7 +7,13 @@ $db = getConnection();
 // Bayar denda
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bayar'])) {
     verify_csrf();
-    $db->prepare("UPDATE peminjaman SET denda_lunas = 1 WHERE id_peminjaman = :id")->execute([':id' => $_POST['bayar']]);
+    $id = $_POST['bayar'];
+    $st = $db->prepare("SELECT denda FROM peminjaman WHERE id_peminjaman = :id");
+    $st->execute([':id' => $id]);
+    $row = $st->fetch();
+    if ($row) {
+        $db->prepare("INSERT INTO pembayaran_denda (id_peminjaman, jumlah, tgl_bayar, keterangan) VALUES (:id, :jml, CURDATE(), 'Pembayaran via menu Denda')")->execute([':id' => $id, ':jml' => $row['denda']]);
+    }
     $_SESSION['flash'] = ['type' => 'success', 'message' => 'Denda berhasil dibayar'];
     header('Location: index.php');
     exit;
@@ -16,13 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bayar'])) {
 require_once __DIR__ . '/../includes/header.php';
 
 // Buku terlambat (dipinjam & lewat jatuh tempo)
-$terlambat = $db->query("SELECT p.id_peminjaman, a.nama AS anggota, a.no_anggota, a.nisn, a.kelas, b.judul AS buku, p.tgl_pinjam, p.tgl_jatuh_tempo, DATEDIFF(CURDATE(), p.tgl_jatuh_tempo) AS hari_telat FROM peminjaman p JOIN anggota a ON p.id_anggota = a.id_anggota JOIN buku b ON p.id_buku = b.id_buku WHERE p.status='dipinjam' AND p.tgl_jatuh_tempo < CURDATE() ORDER BY p.tgl_jatuh_tempo")->fetchAll();
+$terlambat = $db->query("SELECT p.id_peminjaman, a.nama AS anggota, a.no_anggota, a.nisn, k.nama_kelas AS kelas, b.judul AS buku, p.tgl_pinjam, p.tgl_jatuh_tempo, DATEDIFF(CURDATE(), p.tgl_jatuh_tempo) AS hari_telat FROM peminjaman p JOIN anggota a ON p.id_anggota = a.id_anggota LEFT JOIN kelas k ON a.id_kelas = k.id_kelas JOIN buku b ON p.id_buku = b.id_buku WHERE p.status='dipinjam' AND p.tgl_jatuh_tempo < CURDATE() ORDER BY p.tgl_jatuh_tempo")->fetchAll();
 
 // Denda belum bayar
-$denda_belum = $db->query("SELECT p.id_peminjaman, a.nama AS anggota, a.no_anggota, b.judul AS buku, p.tgl_jatuh_tempo, p.tgl_kembali, p.denda, DATEDIFF(p.tgl_kembali, p.tgl_jatuh_tempo) AS hari_telat FROM peminjaman p JOIN anggota a ON p.id_anggota = a.id_anggota JOIN buku b ON p.id_buku = b.id_buku WHERE p.denda > 0 AND p.denda_lunas = 0 AND p.status IN ('terlambat','dikembalikan') ORDER BY p.tgl_kembali DESC")->fetchAll();
+$denda_belum = $db->query("SELECT p.id_peminjaman, a.nama AS anggota, a.no_anggota, b.judul AS buku, p.tgl_jatuh_tempo, p.tgl_kembali, p.denda, DATEDIFF(p.tgl_kembali, p.tgl_jatuh_tempo) AS hari_telat FROM peminjaman p JOIN anggota a ON p.id_anggota = a.id_anggota JOIN buku b ON p.id_buku = b.id_buku LEFT JOIN pembayaran_denda pd ON p.id_peminjaman = pd.id_peminjaman WHERE p.denda > 0 AND pd.id_bayar IS NULL AND p.status IN ('terlambat','dikembalikan') ORDER BY p.tgl_kembali DESC")->fetchAll();
 
 // Denda sudah bayar
-$denda_lunas = $db->query("SELECT p.id_peminjaman, a.nama AS anggota, a.no_anggota, b.judul AS buku, p.tgl_jatuh_tempo, p.tgl_kembali, p.denda, DATEDIFF(p.tgl_kembali, p.tgl_jatuh_tempo) AS hari_telat FROM peminjaman p JOIN anggota a ON p.id_anggota = a.id_anggota JOIN buku b ON p.id_buku = b.id_buku WHERE p.denda > 0 AND p.denda_lunas = 1 ORDER BY p.tgl_kembali DESC LIMIT 20")->fetchAll();
+$denda_lunas = $db->query("SELECT p.id_peminjaman, a.nama AS anggota, a.no_anggota, b.judul AS buku, p.tgl_jatuh_tempo, p.tgl_kembali, p.denda, DATEDIFF(p.tgl_kembali, p.tgl_jatuh_tempo) AS hari_telat FROM peminjaman p JOIN anggota a ON p.id_anggota = a.id_anggota JOIN buku b ON p.id_buku = b.id_buku JOIN pembayaran_denda pd ON p.id_peminjaman = pd.id_peminjaman WHERE p.denda > 0 ORDER BY p.tgl_kembali DESC LIMIT 20")->fetchAll();
 ?>
 
 <div class="page-header">

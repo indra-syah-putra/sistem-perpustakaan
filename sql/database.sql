@@ -1,7 +1,7 @@
 -- ============================================================
 -- DATABASE: perpustakaan
 -- Sistem Informasi Perpustakaan (PHP Native + MySQL)
--- Untuk Sertifikasi Analis Program
+-- Untuk Sertifikasi Database Administrator
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS perpustakaan;
@@ -16,6 +16,16 @@ CREATE TABLE user (
     password VARCHAR(255) NOT NULL,
     nama_lengkap VARCHAR(100) NOT NULL,
     role ENUM('admin', 'petugas') NOT NULL DEFAULT 'petugas',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- TABEL KELAS (lookup)
+-- ============================================================
+CREATE TABLE kelas (
+    id_kelas INT AUTO_INCREMENT PRIMARY KEY,
+    nama_kelas VARCHAR(10) NOT NULL UNIQUE,
+    tingkatan INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -61,14 +71,15 @@ CREATE TABLE anggota (
     id_anggota INT AUTO_INCREMENT PRIMARY KEY,
     no_anggota VARCHAR(20) NOT NULL UNIQUE,
     nisn VARCHAR(20) UNIQUE,
-    kelas VARCHAR(5),
+    id_kelas INT,
     nama VARCHAR(150) NOT NULL,
     email VARCHAR(100),
     no_telp VARCHAR(20),
     alamat TEXT,
     tgl_daftar DATE NOT NULL DEFAULT (CURRENT_DATE),
     status ENUM('aktif', 'nonaktif') NOT NULL DEFAULT 'aktif',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_kelas) REFERENCES kelas(id_kelas) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
 -- ============================================================
@@ -83,14 +94,26 @@ CREATE TABLE peminjaman (
     tgl_kembali DATE NULL,
     status ENUM('dipinjam', 'dikembalikan', 'terlambat') NOT NULL DEFAULT 'dipinjam',
     denda DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    denda_lunas TINYINT(1) NOT NULL DEFAULT 0,
-    FOREIGN KEY (id_anggota) REFERENCES anggota(id_anggota) ON DELETE CASCADE,
-    FOREIGN KEY (id_buku) REFERENCES buku(id_buku) ON DELETE CASCADE,
+    FOREIGN KEY (id_anggota) REFERENCES anggota(id_anggota) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (id_buku) REFERENCES buku(id_buku) ON DELETE RESTRICT ON UPDATE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- ============================================================
--- TABEL LOG (untuk trigger demo)
+-- TABEL PEMBAYARAN DENDA (riwayat pembayaran)
+-- ============================================================
+CREATE TABLE pembayaran_denda (
+    id_bayar INT AUTO_INCREMENT PRIMARY KEY,
+    id_peminjaman INT NOT NULL,
+    jumlah DECIMAL(10,2) NOT NULL,
+    tgl_bayar DATE NOT NULL DEFAULT (CURRENT_DATE),
+    keterangan VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_peminjaman) REFERENCES peminjaman(id_peminjaman) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- TABEL LOG PEMINJAMAN (untuk trigger)
 -- ============================================================
 CREATE TABLE log_peminjaman (
     id_log INT AUTO_INCREMENT PRIMARY KEY,
@@ -99,6 +122,35 @@ CREATE TABLE log_peminjaman (
     detail TEXT,
     FOREIGN KEY (id_peminjaman) REFERENCES peminjaman(id_peminjaman) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- TABEL DOKUMEN (metadata dokumen)
+-- ============================================================
+CREATE TABLE dokumen (
+    id_dokumen INT AUTO_INCREMENT PRIMARY KEY,
+    judul VARCHAR(255) NOT NULL,
+    nama_file VARCHAR(255) NOT NULL,
+    jenis_file VARCHAR(50) NOT NULL,
+    lokasi_file VARCHAR(255),
+    versi VARCHAR(20) DEFAULT '1.0',
+    tgl_upload DATE NOT NULL DEFAULT (CURRENT_DATE),
+    id_user INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_user) REFERENCES user(id_user) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- TABEL PENGATURAN APLIKASI
+-- ============================================================
+CREATE TABLE pengaturan (
+    id_setting INT AUTO_INCREMENT PRIMARY KEY,
+    nama_setting VARCHAR(50) NOT NULL UNIQUE,
+    nilai_setting VARCHAR(255) NOT NULL,
+    deskripsi VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- ============================================================
@@ -111,6 +163,7 @@ CREATE INDEX idx_peminjaman_buku ON peminjaman(id_buku);
 CREATE INDEX idx_buku_judul ON buku(judul);
 CREATE INDEX idx_anggota_nama ON anggota(nama);
 CREATE INDEX idx_anggota_nisn ON anggota(nisn);
+CREATE INDEX idx_anggota_id_kelas ON anggota(id_kelas);
 
 -- ============================================================
 -- VIEW
@@ -128,7 +181,7 @@ SELECT
     DATEDIFF(CURDATE(), p.tgl_jatuh_tempo) AS hari_terlambat,
     CASE 
         WHEN CURDATE() > p.tgl_jatuh_tempo 
-        THEN DATEDIFF(CURDATE(), p.tgl_jatuh_tempo) * 1000 
+        THEN DATEDIFF(CURDATE(), p.tgl_jatuh_tempo) * (SELECT COALESCE((SELECT CAST(nilai_setting AS UNSIGNED) FROM pengaturan WHERE nama_setting = 'denda_per_hari'), 1000))
         ELSE 0 
     END AS denda_hitung
 FROM peminjaman p
@@ -180,7 +233,7 @@ SELECT
     (SELECT COUNT(*) FROM peminjaman WHERE status = 'dipinjam' AND tgl_jatuh_tempo < CURDATE()) AS peminjaman_terlambat;
 
 -- ============================================================
--- SEED DATA
+-- FUNCTION: hitung_denda
 -- ============================================================
 DELIMITER $$
 CREATE FUNCTION hitung_denda(tgl_jatuh_tempo DATE, tgl_kembali DATE)
@@ -193,7 +246,7 @@ BEGIN
     SET hari_terlambat = DATEDIFF(tgl_kembali, tgl_jatuh_tempo);
     
     IF hari_terlambat > 0 THEN
-        SET total_denda = hari_terlambat * 1000;
+        SET total_denda = hari_terlambat * (SELECT COALESCE((SELECT CAST(nilai_setting AS UNSIGNED) FROM pengaturan WHERE nama_setting = 'denda_per_hari'), 1000));
     ELSE
         SET total_denda = 0;
     END IF;
@@ -217,14 +270,12 @@ BEGIN
     DECLARE stok_tersedia INT;
     DECLARE status_anggota VARCHAR(20);
     
-    -- Cek status anggota
     SELECT status INTO status_anggota FROM anggota WHERE id_anggota = p_id_anggota;
     
     IF status_anggota != 'aktif' THEN
         SET p_status = 'gagal';
         SET p_pesan = 'Anggota tidak aktif';
     ELSE
-        -- Cek stok buku
         SELECT stok INTO stok_tersedia FROM buku WHERE id_buku = p_id_buku;
         
         IF stok_tersedia > 0 THEN
@@ -301,7 +352,7 @@ END$$
 DELIMITER ;
 
 -- ============================================================
--- STORED PROCEDURE: laporan_peminjaman (dengan parameter tanggal)
+-- STORED PROCEDURE: laporan_peminjaman
 -- ============================================================
 DELIMITER $$
 CREATE PROCEDURE laporan_peminjaman(
@@ -328,7 +379,7 @@ END$$
 DELIMITER ;
 
 -- ============================================================
--- TRIGGER: sebelum insert peminjaman (validasi stok)
+-- TRIGGER: sebelum insert peminjaman
 -- ============================================================
 DELIMITER $$
 CREATE TRIGGER before_insert_peminjaman
@@ -338,19 +389,16 @@ BEGIN
     DECLARE stok_tersedia INT;
     DECLARE status_anggota VARCHAR(20);
     
-    -- Validasi stok
     SELECT stok INTO stok_tersedia FROM buku WHERE id_buku = NEW.id_buku;
     IF stok_tersedia <= 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stok buku habis';
     END IF;
     
-    -- Validasi anggota aktif
     SELECT status INTO status_anggota FROM anggota WHERE id_anggota = NEW.id_anggota;
     IF status_anggota != 'aktif' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Anggota tidak aktif';
     END IF;
     
-    -- Auto set tgl_jatuh_tempo jika tidak diisi (default 7 hari)
     IF NEW.tgl_jatuh_tempo IS NULL THEN
         SET NEW.tgl_jatuh_tempo = DATE_ADD(NEW.tgl_pinjam, INTERVAL 7 DAY);
     END IF;
@@ -358,7 +406,7 @@ END$$
 DELIMITER ;
 
 -- ============================================================
--- TRIGGER: setelah update peminjaman (log dan update stok)
+-- TRIGGER: setelah update peminjaman
 -- ============================================================
 DELIMITER $$
 CREATE TRIGGER after_update_peminjaman
@@ -387,6 +435,12 @@ INSERT INTO user (username, password, nama_lengkap, role) VALUES
 ('petugas', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Petugas', 'petugas');
 -- password untuk kedua user: password
 
+-- Kelas
+INSERT INTO kelas (nama_kelas, tingkatan) VALUES
+('7', 1),
+('8', 2),
+('9', 3);
+
 -- Kategori
 INSERT INTO kategori (nama_kategori) VALUES
 ('Fiksi'),
@@ -399,6 +453,12 @@ INSERT INTO kategori (nama_kategori) VALUES
 ('Pendidikan'),
 ('Novel'),
 ('Komik');
+
+-- Pengaturan
+INSERT INTO pengaturan (nama_setting, nilai_setting, deskripsi) VALUES
+('denda_per_hari', '1000', 'Denda keterlambatan per hari (Rupiah)'),
+('max_pinjam', '3', 'Maksimal buku yang bisa dipinjam per anggota'),
+('max_hari_pinjam', '14', 'Maksimal lama peminjaman (hari)');
 
 -- Buku
 INSERT INTO buku (judul, pengarang, penerbit, tahun_terbit, isbn, stok) VALUES
@@ -415,97 +475,94 @@ INSERT INTO buku (judul, pengarang, penerbit, tahun_terbit, isbn, stok) VALUES
 
 -- Relasi buku -> kategori
 INSERT INTO buku_kategori (id_buku, id_kategori) VALUES
-(1, 1), (1, 9),    -- Laskar Pelangi: Fiksi, Novel
-(2, 2), (2, 8),    -- Atomic Habits: Non-Fiksi, Pendidikan
-(3, 3), (3, 8),    -- Pengantar TI: Teknologi, Pendidikan
-(4, 3), (4, 8),    -- Dasar PHP: Teknologi, Pendidikan
-(5, 5), (5, 2),    -- Sejarah Dunia: Sejarah, Non-Fiksi
-(6, 6), (6, 8),    -- Filsafat Ilmu: Filsafat, Pendidikan
-(7, 1), (7, 9),    -- Bumi Manusia: Fiksi, Novel
-(8, 5), (8, 4),    -- Sapiens: Sejarah, Sains
-(9, 3), (9, 2),    -- Clean Code: Teknologi, Non-Fiksi
-(10, 3), (10, 8);  -- Pragmatic: Teknologi, Pendidikan
+(1, 1), (1, 9),
+(2, 2), (2, 8),
+(3, 3), (3, 8),
+(4, 3), (4, 8),
+(5, 5), (5, 2),
+(6, 6), (6, 8),
+(7, 1), (7, 9),
+(8, 5), (8, 4),
+(9, 3), (9, 2),
+(10, 3), (10, 8);
 
 -- Anggota
-INSERT INTO anggota (no_anggota, nisn, kelas, nama, status, tgl_daftar) VALUES
--- Kelas 7
-('AGT007', '1000000001', '7', 'Ahmad Pratama', 'aktif', CURDATE()),
-('AGT008', '1000000002', '7', 'Budi Santoso', 'aktif', CURDATE()),
-('AGT009', '1000000003', '7', 'Citra Wijaya', 'aktif', CURDATE()),
-('AGT010', '1000000004', '7', 'Dewi Kusuma', 'aktif', CURDATE()),
-('AGT011', '1000000005', '7', 'Eko Saputra', 'aktif', CURDATE()),
-('AGT012', '1000000006', '7', 'Fitri Hidayat', 'aktif', CURDATE()),
-('AGT013', '1000000007', '7', 'Galih Nugraha', 'aktif', CURDATE()),
-('AGT014', '1000000008', '7', 'Hesti Permadi', 'aktif', CURDATE()),
-('AGT015', '1000000009', '7', 'Irwan Suryadi', 'aktif', CURDATE()),
-('AGT016', '1000000010', '7', 'Juni Ramadhani', 'aktif', CURDATE()),
-('AGT017', '1000000011', '7', 'Kartika Purnama', 'aktif', CURDATE()),
-('AGT018', '1000000012', '7', 'Lukman Mahendra', 'aktif', CURDATE()),
-('AGT019', '1000000013', '7', 'Mega Lestari', 'aktif', CURDATE()),
-('AGT020', '1000000014', '7', 'Nugroho Wahyuni', 'aktif', CURDATE()),
-('AGT021', '1000000015', '7', 'Oktavia Setiawan', 'aktif', CURDATE()),
-('AGT022', '1000000016', '7', 'Prasetyo Hartono', 'aktif', CURDATE()),
-('AGT023', '1000000017', '7', 'Ratna Susanti', 'aktif', CURDATE()),
-('AGT024', '1000000018', '7', 'Surya Anggraini', 'aktif', CURDATE()),
-('AGT025', '1000000019', '7', 'Tri Prabowo', 'aktif', CURDATE()),
-('AGT026', '1000000020', '7', 'Utami Wulandari', 'aktif', CURDATE()),
-('AGT027', '1000000021', '7', 'Vina Gunawan', 'aktif', CURDATE()),
-('AGT028', '1000000022', '7', 'Wahyu Irawan', 'aktif', CURDATE()),
-('AGT029', '1000000023', '7', 'Yuni Utomo', 'aktif', CURDATE()),
-('AGT030', '1000000024', '7', 'Zainal Susilo', 'aktif', CURDATE()),
-('AGT031', '1000000025', '7', 'Agung Handayani', 'aktif', CURDATE()),
--- Kelas 8
-('AGT032', '1000000026', '8', 'Bayu Mulyani', 'aktif', CURDATE()),
-('AGT033', '1000000027', '8', 'Cahya Haryanto', 'aktif', CURDATE()),
-('AGT034', '1000000028', '8', 'Dian Fauzi', 'aktif', CURDATE()),
-('AGT035', '1000000029', '8', 'Endang Ningsih', 'aktif', CURDATE()),
-('AGT036', '1000000030', '8', 'Fajar Febrianti', 'aktif', CURDATE()),
-('AGT037', '1000000031', '8', 'Gita Kurniawan', 'aktif', CURDATE()),
-('AGT038', '1000000032', '8', 'Hendra Ardiansyah', 'aktif', CURDATE()),
-('AGT039', '1000000033', '8', 'Intan Pramono', 'aktif', CURDATE()),
-('AGT040', '1000000034', '8', 'Joko Sudrajat', 'aktif', CURDATE()),
-('AGT041', '1000000035', '8', 'Kurnia Wardhana', 'aktif', CURDATE()),
-('AGT042', '1000000036', '8', 'Lina Cahyani', 'aktif', CURDATE()),
-('AGT043', '1000000037', '8', 'Mulyadi Fitriani', 'aktif', CURDATE()),
-('AGT044', '1000000038', '8', 'Nadia Yulianti', 'aktif', CURDATE()),
-('AGT045', '1000000039', '8', 'Oki Nasution', 'aktif', CURDATE()),
-('AGT046', '1000000040', '8', 'Putri Sihombing', 'aktif', CURDATE()),
-('AGT047', '1000000041', '8', 'Rina Simanjuntak', 'aktif', CURDATE()),
-('AGT048', '1000000042', '8', 'Sigit Siregar', 'aktif', CURDATE()),
-('AGT049', '1000000043', '8', 'Tina Sitompul', 'aktif', CURDATE()),
-('AGT050', '1000000044', '8', 'Ujang Situmorang', 'aktif', CURDATE()),
-('AGT051', '1000000045', '8', 'Vera Sinaga', 'aktif', CURDATE()),
-('AGT052', '1000000046', '8', 'Wawan Kurniawan', 'aktif', CURDATE()),
-('AGT053', '1000000047', '8', 'Yanti Ardiansyah', 'aktif', CURDATE()),
-('AGT054', '1000000048', '8', 'Arif Pramono', 'aktif', CURDATE()),
-('AGT055', '1000000049', '8', 'Bella Sudrajat', 'aktif', CURDATE()),
-('AGT056', '1000000050', '8', 'Candra Wardhana', 'aktif', CURDATE()),
--- Kelas 9
-('AGT057', '1000000051', '9', 'Dwi Cahyani', 'aktif', CURDATE()),
-('AGT058', '1000000052', '9', 'Eka Fitriani', 'aktif', CURDATE()),
-('AGT059', '1000000053', '9', 'Fanni Yulianti', 'aktif', CURDATE()),
-('AGT060', '1000000054', '9', 'Gunawan Nasution', 'aktif', CURDATE()),
-('AGT061', '1000000055', '9', 'Hana Sihombing', 'aktif', CURDATE()),
-('AGT062', '1000000056', '9', 'Indra Simanjuntak', 'aktif', CURDATE()),
-('AGT063', '1000000057', '9', 'Jaya Siregar', 'aktif', CURDATE()),
-('AGT064', '1000000058', '9', 'Kiki Sitompul', 'aktif', CURDATE()),
-('AGT065', '1000000059', '9', 'Laras Situmorang', 'aktif', CURDATE()),
-('AGT066', '1000000060', '9', 'Miftah Sinaga', 'aktif', CURDATE()),
-('AGT067', '1000000061', '9', 'Novi Pratama', 'aktif', CURDATE()),
-('AGT068', '1000000062', '9', 'Oscar Santoso', 'aktif', CURDATE()),
-('AGT069', '1000000063', '9', 'Puji Wijaya', 'aktif', CURDATE()),
-('AGT070', '1000000064', '9', 'Rizky Kusuma', 'aktif', CURDATE()),
-('AGT071', '1000000065', '9', 'Sari Saputra', 'aktif', CURDATE()),
-('AGT072', '1000000066', '9', 'Teguh Hidayat', 'aktif', CURDATE()),
-('AGT073', '1000000067', '9', 'Umi Nugraha', 'aktif', CURDATE()),
-('AGT074', '1000000068', '9', 'Vicky Permadi', 'aktif', CURDATE()),
-('AGT075', '1000000069', '9', 'Winda Suryadi', 'aktif', CURDATE()),
-('AGT076', '1000000070', '9', 'Yoga Ramadhani', 'aktif', CURDATE()),
-('AGT077', '1000000071', '9', 'Adi Purnama', 'aktif', CURDATE()),
-('AGT078', '1000000072', '9', 'Bagus Mahendra', 'aktif', CURDATE()),
-('AGT079', '1000000073', '9', 'Cici Lestari', 'aktif', CURDATE()),
-('AGT080', '1000000074', '9', 'Deni Wahyuni', 'aktif', CURDATE()),
-('AGT081', '1000000075', '9', 'Ahmad Setiawan', 'aktif', CURDATE());
+INSERT INTO anggota (no_anggota, nisn, id_kelas, nama, status, tgl_daftar) VALUES
+('AGT007', '1000000001', 1, 'Ahmad Pratama', 'aktif', CURDATE()),
+('AGT008', '1000000002', 1, 'Budi Santoso', 'aktif', CURDATE()),
+('AGT009', '1000000003', 1, 'Citra Wijaya', 'aktif', CURDATE()),
+('AGT010', '1000000004', 1, 'Dewi Kusuma', 'aktif', CURDATE()),
+('AGT011', '1000000005', 1, 'Eko Saputra', 'aktif', CURDATE()),
+('AGT012', '1000000006', 1, 'Fitri Hidayat', 'aktif', CURDATE()),
+('AGT013', '1000000007', 1, 'Galih Nugraha', 'aktif', CURDATE()),
+('AGT014', '1000000008', 1, 'Hesti Permadi', 'aktif', CURDATE()),
+('AGT015', '1000000009', 1, 'Irwan Suryadi', 'aktif', CURDATE()),
+('AGT016', '1000000010', 1, 'Juni Ramadhani', 'aktif', CURDATE()),
+('AGT017', '1000000011', 1, 'Kartika Purnama', 'aktif', CURDATE()),
+('AGT018', '1000000012', 1, 'Lukman Mahendra', 'aktif', CURDATE()),
+('AGT019', '1000000013', 1, 'Mega Lestari', 'aktif', CURDATE()),
+('AGT020', '1000000014', 1, 'Nugroho Wahyuni', 'aktif', CURDATE()),
+('AGT021', '1000000015', 1, 'Oktavia Setiawan', 'aktif', CURDATE()),
+('AGT022', '1000000016', 1, 'Prasetyo Hartono', 'aktif', CURDATE()),
+('AGT023', '1000000017', 1, 'Ratna Susanti', 'aktif', CURDATE()),
+('AGT024', '1000000018', 1, 'Surya Anggraini', 'aktif', CURDATE()),
+('AGT025', '1000000019', 1, 'Tri Prabowo', 'aktif', CURDATE()),
+('AGT026', '1000000020', 1, 'Utami Wulandari', 'aktif', CURDATE()),
+('AGT027', '1000000021', 1, 'Vina Gunawan', 'aktif', CURDATE()),
+('AGT028', '1000000022', 1, 'Wahyu Irawan', 'aktif', CURDATE()),
+('AGT029', '1000000023', 1, 'Yuni Utomo', 'aktif', CURDATE()),
+('AGT030', '1000000024', 1, 'Zainal Susilo', 'aktif', CURDATE()),
+('AGT031', '1000000025', 1, 'Agung Handayani', 'aktif', CURDATE()),
+('AGT032', '1000000026', 2, 'Bayu Mulyani', 'aktif', CURDATE()),
+('AGT033', '1000000027', 2, 'Cahya Haryanto', 'aktif', CURDATE()),
+('AGT034', '1000000028', 2, 'Dian Fauzi', 'aktif', CURDATE()),
+('AGT035', '1000000029', 2, 'Endang Ningsih', 'aktif', CURDATE()),
+('AGT036', '1000000030', 2, 'Fajar Febrianti', 'aktif', CURDATE()),
+('AGT037', '1000000031', 2, 'Gita Kurniawan', 'aktif', CURDATE()),
+('AGT038', '1000000032', 2, 'Hendra Ardiansyah', 'aktif', CURDATE()),
+('AGT039', '1000000033', 2, 'Intan Pramono', 'aktif', CURDATE()),
+('AGT040', '1000000034', 2, 'Joko Sudrajat', 'aktif', CURDATE()),
+('AGT041', '1000000035', 2, 'Kurnia Wardhana', 'aktif', CURDATE()),
+('AGT042', '1000000036', 2, 'Lina Cahyani', 'aktif', CURDATE()),
+('AGT043', '1000000037', 2, 'Mulyadi Fitriani', 'aktif', CURDATE()),
+('AGT044', '1000000038', 2, 'Nadia Yulianti', 'aktif', CURDATE()),
+('AGT045', '1000000039', 2, 'Oki Nasution', 'aktif', CURDATE()),
+('AGT046', '1000000040', 2, 'Putri Sihombing', 'aktif', CURDATE()),
+('AGT047', '1000000041', 2, 'Rina Simanjuntak', 'aktif', CURDATE()),
+('AGT048', '1000000042', 2, 'Sigit Siregar', 'aktif', CURDATE()),
+('AGT049', '1000000043', 2, 'Tina Sitompul', 'aktif', CURDATE()),
+('AGT050', '1000000044', 2, 'Ujang Situmorang', 'aktif', CURDATE()),
+('AGT051', '1000000045', 2, 'Vera Sinaga', 'aktif', CURDATE()),
+('AGT052', '1000000046', 2, 'Wawan Kurniawan', 'aktif', CURDATE()),
+('AGT053', '1000000047', 2, 'Yanti Ardiansyah', 'aktif', CURDATE()),
+('AGT054', '1000000048', 2, 'Arif Pramono', 'aktif', CURDATE()),
+('AGT055', '1000000049', 2, 'Bella Sudrajat', 'aktif', CURDATE()),
+('AGT056', '1000000050', 2, 'Candra Wardhana', 'aktif', CURDATE()),
+('AGT057', '1000000051', 3, 'Dwi Cahyani', 'aktif', CURDATE()),
+('AGT058', '1000000052', 3, 'Eka Fitriani', 'aktif', CURDATE()),
+('AGT059', '1000000053', 3, 'Fanni Yulianti', 'aktif', CURDATE()),
+('AGT060', '1000000054', 3, 'Gunawan Nasution', 'aktif', CURDATE()),
+('AGT061', '1000000055', 3, 'Hana Sihombing', 'aktif', CURDATE()),
+('AGT062', '1000000056', 3, 'Indra Simanjuntak', 'aktif', CURDATE()),
+('AGT063', '1000000057', 3, 'Jaya Siregar', 'aktif', CURDATE()),
+('AGT064', '1000000058', 3, 'Kiki Sitompul', 'aktif', CURDATE()),
+('AGT065', '1000000059', 3, 'Laras Situmorang', 'aktif', CURDATE()),
+('AGT066', '1000000060', 3, 'Miftah Sinaga', 'aktif', CURDATE()),
+('AGT067', '1000000061', 3, 'Novi Pratama', 'aktif', CURDATE()),
+('AGT068', '1000000062', 3, 'Oscar Santoso', 'aktif', CURDATE()),
+('AGT069', '1000000063', 3, 'Puji Wijaya', 'aktif', CURDATE()),
+('AGT070', '1000000064', 3, 'Rizky Kusuma', 'aktif', CURDATE()),
+('AGT071', '1000000065', 3, 'Sari Saputra', 'aktif', CURDATE()),
+('AGT072', '1000000066', 3, 'Teguh Hidayat', 'aktif', CURDATE()),
+('AGT073', '1000000067', 3, 'Umi Nugraha', 'aktif', CURDATE()),
+('AGT074', '1000000068', 3, 'Vicky Permadi', 'aktif', CURDATE()),
+('AGT075', '1000000069', 3, 'Winda Suryadi', 'aktif', CURDATE()),
+('AGT076', '1000000070', 3, 'Yoga Ramadhani', 'aktif', CURDATE()),
+('AGT077', '1000000071', 3, 'Adi Purnama', 'aktif', CURDATE()),
+('AGT078', '1000000072', 3, 'Bagus Mahendra', 'aktif', CURDATE()),
+('AGT079', '1000000073', 3, 'Cici Lestari', 'aktif', CURDATE()),
+('AGT080', '1000000074', 3, 'Deni Wahyuni', 'aktif', CURDATE()),
+('AGT081', '1000000075', 3, 'Ahmad Setiawan', 'aktif', CURDATE());
 
 -- Peminjaman contoh
 INSERT INTO peminjaman (id_anggota, id_buku, tgl_pinjam, tgl_jatuh_tempo, tgl_kembali, status, denda) VALUES

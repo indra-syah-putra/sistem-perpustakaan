@@ -3,7 +3,8 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/header.php';
 
 $db = getConnection();
-$anggota = $db->query("SELECT id_anggota, no_anggota, nisn, nama, kelas FROM anggota WHERE status='aktif' ORDER BY kelas, nama")->fetchAll();
+$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
+$anggota = $db->query("SELECT a.id_anggota, a.no_anggota, a.nisn, a.nama, k.nama_kelas AS kelas FROM anggota a LEFT JOIN kelas k ON a.id_kelas = k.id_kelas WHERE a.status='aktif' ORDER BY k.nama_kelas, a.nama")->fetchAll();
 $buku = $db->query("SELECT id_buku, judul, stok FROM buku WHERE stok>0 ORDER BY judul")->fetchAll();
 
 $success = ''; $error = '';
@@ -65,9 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label>Kelas</label>
                 <select id="filter_kelas" class="form-select">
                     <option value="">-- Semua Kelas --</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                    <option value="9">9</option>
+                    <?php foreach ($daftar_kelas as $k): ?>
+                    <option value="<?= htmlspecialchars($k['nama_kelas']) ?>"><?= htmlspecialchars($k['nama_kelas']) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="form-group">
@@ -78,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <select name="id_anggota" id="id_anggota" class="search-select-hidden" required>
                         <option value="">-- Pilih --</option>
                         <?php foreach ($anggota as $a): ?>
-                        <option value="<?= $a['id_anggota'] ?>" data-kelas="<?= $a['kelas'] ?>"><?= htmlspecialchars('['.$a['kelas'].'] '.$a['no_anggota'].' - '.$a['nama'].' (NISN: '.$a['nisn'].')') ?></option>
+                        <option value="<?= $a['id_anggota'] ?>" data-kelas="<?= htmlspecialchars($a['kelas'] ?: '') ?>"><?= htmlspecialchars('['.$a['kelas'].'] '.$a['no_anggota'].' - '.$a['nama'].' (NISN: '.$a['nisn'].')') ?></option>
                         <?php endforeach; ?>
                     </select>
                     <div class="search-select-dropdown" id="anggotaDropdown"></div>

@@ -7,14 +7,16 @@ $last = $db->query("SELECT MAX(CAST(SUBSTRING(no_anggota, 4) AS UNSIGNED)) AS la
 $next_no = ($last['last_no'] ?? 0) + 1;
 $auto_no = 'AGT' . str_pad($next_no, 3, '0', STR_PAD_LEFT);
 
+$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     try {
-        $stmt = $db->prepare("INSERT INTO anggota (no_anggota, nisn, kelas, nama, email, no_telp, alamat, tgl_daftar) VALUES (:no_anggota, :nisn, :kelas, :nama, :email, :no_telp, :alamat, :tgl_daftar)");
+        $stmt = $db->prepare("INSERT INTO anggota (no_anggota, nisn, id_kelas, nama, email, no_telp, alamat, tgl_daftar) VALUES (:no_anggota, :nisn, :id_kelas, :nama, :email, :no_telp, :alamat, :tgl_daftar)");
         $stmt->execute([
             ':no_anggota' => $_POST['no_anggota'],
             ':nisn' => $_POST['nisn'],
-            ':kelas' => $_POST['kelas'] ?: null,
+            ':id_kelas' => $_POST['id_kelas'] ?: null,
             ':nama' => $_POST['nama'],
             ':email' => $_POST['email'] ?: null,
             ':no_telp' => $_POST['no_telp'] ?: null,
@@ -61,11 +63,11 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Kelas</label>
-                    <select name="kelas" class="form-select">
+                    <select name="id_kelas" class="form-select">
                         <option value="">-- Pilih --</option>
-                        <option value="7">7</option>
-                        <option value="8">8</option>
-                        <option value="9">9</option>
+                        <?php foreach ($daftar_kelas as $k): ?>
+                        <option value="<?= $k['id_kelas'] ?>"><?= htmlspecialchars($k['nama_kelas']) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
             </div>

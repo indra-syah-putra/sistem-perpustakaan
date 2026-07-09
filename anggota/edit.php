@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 $db = getConnection();
 $id = $_GET['id'] ?? 0;
 
-$stmt = $db->prepare("SELECT * FROM anggota WHERE id_anggota = :id");
+$stmt = $db->prepare("SELECT a.*, k.nama_kelas FROM anggota a LEFT JOIN kelas k ON a.id_kelas = k.id_kelas WHERE a.id_anggota = :id");
 $stmt->execute([':id' => $id]);
 $a = $stmt->fetch();
 
@@ -15,13 +15,15 @@ if (!$a) {
     exit;
 }
 
+$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     try {
-        $stmt = $db->prepare("UPDATE anggota SET nisn=:nisn, kelas=:kelas, nama=:nama, email=:email, no_telp=:no_telp, alamat=:alamat, status=:status WHERE id_anggota=:id");
+        $stmt = $db->prepare("UPDATE anggota SET nisn=:nisn, id_kelas=:id_kelas, nama=:nama, email=:email, no_telp=:no_telp, alamat=:alamat, status=:status WHERE id_anggota=:id");
         $stmt->execute([
             ':nisn' => $_POST['nisn'],
-            ':kelas' => $_POST['kelas'] ?: null,
+            ':id_kelas' => $_POST['id_kelas'] ?: null,
             ':nama' => $_POST['nama'],
             ':email' => $_POST['email'] ?: null,
             ':no_telp' => $_POST['no_telp'] ?: null,
@@ -69,11 +71,11 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Kelas</label>
-                    <select name="kelas" class="form-select">
+                    <select name="id_kelas" class="form-select">
                         <option value="">--</option>
-                        <option value="7" <?= $a['kelas']=='7'?'selected':'' ?>>7</option>
-                        <option value="8" <?= $a['kelas']=='8'?'selected':'' ?>>8</option>
-                        <option value="9" <?= $a['kelas']=='9'?'selected':'' ?>>9</option>
+                        <?php foreach ($daftar_kelas as $k): ?>
+                        <option value="<?= $k['id_kelas'] ?>" <?= $a['id_kelas']==$k['id_kelas']?'selected':'' ?>><?= htmlspecialchars($k['nama_kelas']) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
             </div>
