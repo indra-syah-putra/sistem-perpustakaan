@@ -38,13 +38,14 @@ Letakkan di folder `C:\laragon\www\perpustakaan\` (atau `htdocs/` jika pakai XAM
 
 ### 2. Setup database
 
-Jalankan Laragon (Start All), buka phpMyAdmin, lalu **Import** file:
+**Opsi A — phpMyAdmin (GUI):**
+Jalankan Laragon (Start All), buka phpMyAdmin, lalu **Import** file `sql/database.sql` atau copy-paste isinya ke tab SQL.
 
+**Opsi B — Command line (lebih cepat):**
+```bash
+mysql -u root < sql/database.sql
 ```
-sql/database.sql
-```
-
-Atau copy-paste isinya ke tab SQL.
+Jika pakai password: `mysql -u root -p < sql/database.sql`
 
 ### 3. Konfigurasi environment
 
