@@ -4,11 +4,12 @@ Aplikasi perpustakaan berbasis web **PHP Native + MySQL** untuk sekolah. Dibangu
 
 ## Fitur
 
-- **Manajemen Anggota** — CRUD anggota dengan status aktif/nonaktif, kelas, NISN
+- **Manajemen Anggota** — CRUD anggota dengan status aktif/nonaktif, kelas lookup, NISN
 - **Manajemen Buku** — CRUD buku dengan kategori, stok, pencarian
 - **Manajemen Kategori** — Inline add/edit/hapus kategori
+- **Manajemen Dokumen** — CRUD metadata dokumen (judul, file, versi)
 - **Peminjaman & Pengembalian** — Form dengan searchable select, hitung denda otomatis
-- **Denda** — Pelacakan denda (terlambat / belum bayar / riwayat lunas)
+- **Denda** — Pelacakan denda dengan tabel pembayaran terpisah
 - **Pengaturan** — Konfigurasi denda per hari, maksimal pinjam, maksimal hari
 - **Laporan** — Filter tanggal, ekspor CSV & PDF
 - **Dashboard** — Statistik (total buku, anggota aktif, buku dipinjam, dll)
@@ -107,6 +108,16 @@ perpustakaan/
     └── database.sql        # Database schema + seed data
 ```
 
+## Database Objects
+
+| Objek | Jumlah |
+|-------|--------|
+| Tabel | 12 (anggota, buku, buku_kategori, dokumen, kategori, kelas, log_peminjaman, pembayaran_denda, peminjaman, pengaturan, user) |
+| View | 4 (v_peminjaman_aktif, v_riwayat_peminjaman, v_buku_kategori, v_statistik) |
+| Function | 1 (hitung_denda) |
+| Stored Procedure | 3 (pinjam_buku, kembalikan_buku, laporan_peminjaman) |
+| Trigger | 2 (before_insert_peminjaman, after_update_peminjaman) |
+
 ## Role
 
 | Role    | Akses |
@@ -117,7 +128,7 @@ perpustakaan/
 ## Teknologi
 
 - **Backend:** PHP 8 native (PDO, prepared statements)
-- **Database:** MySQL
+- **Database:** MySQL (InnoDB, foreign keys, trigger, stored procedure, function)
 - **Frontend:** Vanilla CSS, Vanilla JS, Bootstrap Icons
 - **PDF:** FPDF
 - **Server:** Apache (Laragon)
