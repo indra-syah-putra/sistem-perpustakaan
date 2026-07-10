@@ -120,6 +120,6 @@ perpustakaan/
 - **PDF:** FPDF
 - **Server:** Apache (Laragon)
 
-## Lisensi
+## License
 
-MIT
+[MIT](LICENSE)
