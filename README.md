@@ -51,15 +51,9 @@ Jika pakai password: `mysql -u root -p < sql/database.sql`
 
 Hapus `.example` dari nama file `.env.example` jadi `.env`, lalu sesuaikan isinya.
 
-Perhatikan **`BASE_URL`** — isi dengan path folder akses:
+Perhatikan **`BASE_URL`** — sesuaikan dengan path akses kamu.
 
-| Akses via | `BASE_URL` |
-|-----------|-----------|
-| `http://localhost/perpustakaan/` | `/perpustakaan` (default) |
-| `http://perpustakaan.test/` | (kosongkan) |
-| `http://localhost/sma/perpustakaan/` | `/sma/perpustakaan` |
-
-> **Penting:** `BASE_URL` menentukan path CSS, JS, dan redirect. Jika salah, halaman tampil tanpa style (404) dan redirect error.
+> Contoh: akses via `http://localhost/perpustakaan/` → isi `BASE_URL=/perpustakaan`
 
 ### 4. Akses aplikasi
 
