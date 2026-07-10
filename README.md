@@ -122,4 +122,4 @@ perpustakaan/
 
 ## Lisensi
 
-MIT License
+MIT
