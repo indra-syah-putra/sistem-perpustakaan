@@ -122,6 +122,4 @@ perpustakaan/
 
 ## Lisensi
 
-MIT License — silakan gunakan, modifikasi, dan distribusikan.
-
-Dibuat oleh [Indra Syah Putra](https://github.com/indra-syah-putra).
+MIT License
