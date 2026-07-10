@@ -49,20 +49,27 @@ Jika pakai password: `mysql -u root -p < sql/database.sql`
 
 ### 3. Konfigurasi environment
 
-Ubah file `.env` sesuai environment kamu:
+Copy file `.env.example` jadi `.env`, lalu sesuaikan:
 
-```
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=perpustakaan
-DB_USER=root
-DB_PASS=
-BASE_URL=
-APP_NAME=SIPerpus
+```bash
+cp .env.example .env
 ```
 
-> `BASE_URL` kosong jika di root domain (`http://perpustakaan.test/`).
-> Isi `/perpustakaan` jika dalam subfolder (`http://localhost/perpustakaan/`).
+Buka file `.env` dan perhatikan **`BASE_URL`**:
+
+```
+BASE_URL=/perpustakaan
+```
+
+Nilai `BASE_URL` tergantung cara akses aplikasi:
+
+| Akses via | `BASE_URL` | Contoh |
+|-----------|-----------|--------|
+| Subfolder (`localhost/perpustakaan/`) | `/perpustakaan` | ✅ Default — langsung work |
+| Virtual host / root domain (`perpustakaan.test/`) | (kosong) | Ubah jadi `BASE_URL=` |
+| Subfolder lain (`localhost/sma/perpustakaan/`) | `/sma/perpustakaan` | Sesuaikan dengan path |
+
+> **Penting:** `BASE_URL` menentukan path seluruh link CSS, JS, dan redirect. Jika salah, halaman akan tampil tanpa style (CSS 404) dan redirect menuju halaman tidak ditemukan (404).
 
 ### 4. Akses aplikasi
 
