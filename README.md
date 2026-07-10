@@ -47,21 +47,16 @@ mysql -u root < sql/database.sql
 ```
 Jika pakai password: `mysql -u root -p < sql/database.sql`
 
-### 3. Konfigurasi environment
+### 3. Konfigurasi environment & akses
 
-Hapus `.example` dari nama file `.env.example` jadi `.env`, lalu sesuaikan isinya.
+Hapus `.example` dari nama file `.env.example` jadi `.env`, lalu sesuaikan **`BASE_URL`** dengan cara akses kamu:
 
-Perhatikan **`BASE_URL`** — sesuaikan dengan path akses kamu.
+| Cara akses | `BASE_URL` |
+|------------|-----------|
+| `http://localhost/perpustakaan/` | `/perpustakaan` |
+| `http://perpustakaan.test/` | (kosong) |
 
-> Contoh: akses via `http://localhost/perpustakaan/` → isi `BASE_URL=/perpustakaan`
-
-### 4. Akses aplikasi
-
-```
-http://perpustakaan.test/
-atau
-http://localhost/perpustakaan/
-```
+Buka `http://localhost/perpustakaan/` (atau sesuai domain kamu) di browser.
 
 **Login default:**
 
