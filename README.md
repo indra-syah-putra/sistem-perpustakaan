@@ -49,27 +49,17 @@ Jika pakai password: `mysql -u root -p < sql/database.sql`
 
 ### 3. Konfigurasi environment
 
-Copy file `.env.example` jadi `.env`, lalu sesuaikan:
+Hapus `.example` dari nama file `.env.example` jadi `.env`, lalu sesuaikan isinya.
 
-```bash
-cp .env.example .env
-```
+Perhatikan **`BASE_URL`** — isi dengan path folder akses:
 
-Buka file `.env` dan perhatikan **`BASE_URL`**:
+| Akses via | `BASE_URL` |
+|-----------|-----------|
+| `http://localhost/perpustakaan/` | `/perpustakaan` (default) |
+| `http://perpustakaan.test/` | (kosongkan) |
+| `http://localhost/sma/perpustakaan/` | `/sma/perpustakaan` |
 
-```
-BASE_URL=/perpustakaan
-```
-
-Nilai `BASE_URL` tergantung cara akses aplikasi:
-
-| Akses via | `BASE_URL` | Contoh |
-|-----------|-----------|--------|
-| Subfolder (`localhost/perpustakaan/`) | `/perpustakaan` | ✅ Default — langsung work |
-| Virtual host / root domain (`perpustakaan.test/`) | (kosong) | Ubah jadi `BASE_URL=` |
-| Subfolder lain (`localhost/sma/perpustakaan/`) | `/sma/perpustakaan` | Sesuaikan dengan path |
-
-> **Penting:** `BASE_URL` menentukan path seluruh link CSS, JS, dan redirect. Jika salah, halaman akan tampil tanpa style (CSS 404) dan redirect menuju halaman tidak ditemukan (404).
+> **Penting:** `BASE_URL` menentukan path CSS, JS, dan redirect. Jika salah, halaman tampil tanpa style (404) dan redirect error.
 
 ### 4. Akses aplikasi
 
