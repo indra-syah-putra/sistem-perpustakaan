@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../config/database.php';
 
 $db = getConnection();
-$tgl_awal = htmlspecialchars($_GET['tgl_awal'] ?? date('Y-m-d', strtotime('-60 days')));
-$tgl_akhir = htmlspecialchars($_GET['tgl_akhir'] ?? date('Y-m-d'));
+$tgl_awal = $_GET['tgl_awal'] ?? date('Y-m-d', strtotime('-60 days'));
+$tgl_akhir = $_GET['tgl_akhir'] ?? date('Y-m-d');
 
 $stmt = $db->prepare("SELECT p.id_peminjaman, a.no_anggota, a.nisn, a.nama AS anggota, b.judul AS buku, p.tgl_pinjam, p.tgl_jatuh_tempo, p.tgl_kembali, p.status, p.denda FROM peminjaman p JOIN anggota a ON p.id_anggota = a.id_anggota JOIN buku b ON p.id_buku = b.id_buku WHERE p.tgl_pinjam BETWEEN :awal AND :akhir ORDER BY p.tgl_pinjam DESC");
 $stmt->execute([':awal' => $tgl_awal, ':akhir' => $tgl_akhir]);
@@ -94,15 +94,15 @@ $populer = $st->fetchAll();
         <form method="GET" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:end;">
             <div>
                 <label style="font-size:0.8rem;color:#6b7280;">Dari</label>
-                <input type="date" name="tgl_awal" class="form-control" value="<?= $tgl_awal ?>">
+                <input type="date" name="tgl_awal" class="form-control" value="<?= htmlspecialchars($tgl_awal) ?>">
             </div>
             <div>
                 <label style="font-size:0.8rem;color:#6b7280;">Sampai</label>
-                <input type="date" name="tgl_akhir" class="form-control" value="<?= $tgl_akhir ?>">
+                <input type="date" name="tgl_akhir" class="form-control" value="<?= htmlspecialchars($tgl_akhir) ?>">
             </div>
             <button class="btn btn-primary"><i class="bi bi-search"></i> Tampilkan</button>
-            <a href="?export=csv&tgl_awal=<?= $tgl_awal ?>&tgl_akhir=<?= $tgl_akhir ?>" class="btn btn-success"><i class="bi bi-file-earmark-excel"></i> CSV</a>
-            <a href="?export=pdf&tgl_awal=<?= $tgl_awal ?>&tgl_akhir=<?= $tgl_akhir ?>" class="btn btn-danger"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+            <a href="?export=csv&tgl_awal=<?= urlencode($tgl_awal) ?>&tgl_akhir=<?= urlencode($tgl_akhir) ?>" class="btn btn-success"><i class="bi bi-file-earmark-excel"></i> CSV</a>
+            <a href="?export=pdf&tgl_awal=<?= urlencode($tgl_awal) ?>&tgl_akhir=<?= urlencode($tgl_akhir) ?>" class="btn btn-danger"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
         </form>
     </div>
 </div>

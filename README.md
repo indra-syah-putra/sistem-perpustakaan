@@ -17,6 +17,7 @@ Aplikasi perpustakaan berbasis web **PHP Native + MySQL** untuk sekolah. Dibangu
 - **Ganti Password**
 - **Rate Limiting Login** — 5 percobaan, lockout 15 menit
 - **CSRF Protection**
+- **Auto-detect BASE_URL** — Work dari subfolder (`localhost/perpustakaan`) maupun Laragon domain (`perpustakaan.test`)
 - **UI Responsive** — Vanilla CSS + Bootstrap Icons
 
 ## Persyaratan Sistem
@@ -49,14 +50,16 @@ Jika pakai password: `mysql -u root -p < sql/database.sql`
 
 ### 3. Konfigurasi environment & akses
 
-Hapus `.example` dari nama file `.env.example` jadi `.env`, lalu sesuaikan **`BASE_URL`** dengan cara akses kamu:
+Hapus `.example` dari nama file `.env.example` jadi `.env`. `BASE_URL` di-detect otomatis berdasarkan document root, jadi **tidak perlu diatur manual**:
 
-| Cara akses | `BASE_URL` |
+| Cara akses | `BASE_URL` (auto) |
 |------------|-----------|
+| `http://perpustakaan.test/` | `""` (kosong) |
 | `http://localhost/perpustakaan/` | `/perpustakaan` |
-| `http://perpustakaan.test/` | (kosong) |
 
-Buka `http://localhost/perpustakaan/` (atau sesuai domain kamu) di browser.
+Kalau perlu override manual, isi `BASE_URL` di `.env` (contoh: `BASE_URL=/myapp`).
+
+Buka URL di browser.
 
 **Login default:**
 
@@ -73,8 +76,12 @@ perpustakaan/
 ├── login.php               # Halaman login + rate limiting
 ├── logout.php              # Logout
 ├── dashboard.php           # Dashboard statistik
+├── ganti_password.php      # Ganti password user
+├── .env                    # Environment config (tidak di-commit)
+├── .env.example            # Template environment
+├── .env.php                # Loader untuk .env
 ├── config/
-│   └── database.php        # Koneksi PDO + helper functions
+│   └── database.php        # Koneksi PDO, helper, RBAC, CSRF
 ├── includes/
 │   ├── header.php          # Session auth, sidebar, flash modal, confirm modal
 │   └── footer.php          # Penutup HTML
@@ -91,6 +98,8 @@ perpustakaan/
 ├── users/                  # Manajemen user (admin only)
 ├── lib/
 │   └── fpdf.php            # Library PDF
+├── tests/
+│   └── HelperTest.php      # Unit test helper functions
 └── sql/
     └── database.sql        # Database schema + seed data
 ```
@@ -99,7 +108,7 @@ perpustakaan/
 
 | Objek | Jumlah |
 |-------|--------|
-| Tabel | 12 (anggota, buku, buku_kategori, dokumen, kategori, kelas, log_peminjaman, pembayaran_denda, peminjaman, pengaturan, user) |
+| Tabel | 11 (anggota, buku, buku_kategori, dokumen, kategori, kelas, log_peminjaman, pembayaran_denda, peminjaman, pengaturan, user) |
 | View | 4 (v_peminjaman_aktif, v_riwayat_peminjaman, v_buku_kategori, v_statistik) |
 | Function | 1 (hitung_denda) |
 | Stored Procedure | 3 (pinjam_buku, kembalikan_buku, laporan_peminjaman) |
@@ -111,6 +120,12 @@ perpustakaan/
 |---------|-------|
 | **Admin** | Semua fitur, termasuk Pengaturan & Manajemen User |
 | **Petugas** | Anggota, Buku, Kategori, Peminjaman, Denda, Laporan |
+
+## Testing
+
+```bash
+php tests/HelperTest.php
+```
 
 ## Teknologi
 

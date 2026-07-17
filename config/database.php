@@ -10,7 +10,15 @@ define('DB_NAME', env('DB_NAME', 'perpustakaan'));
 define('DB_USER', env('DB_USER', 'root'));
 define('DB_PASS', env('DB_PASS', ''));
 
-define('BASE_URL', env('BASE_URL', '/perpustakaan'));
+// Auto-detect BASE_URL: jika .env kosong, hitung otomatis dari document root
+$env_base = env('BASE_URL');
+if ($env_base !== '' && $env_base !== null) {
+    define('BASE_URL', $env_base);
+} else {
+    $docRoot = str_replace('\\', '/', rtrim($_SERVER['DOCUMENT_ROOT'], '/\\'));
+    $appRoot = str_replace('\\', '/', rtrim(dirname(__DIR__), '/\\'));
+    define('BASE_URL', substr($appRoot, strlen($docRoot)));
+}
 define('APP_NAME', env('APP_NAME', 'Sistem Informasi Perpustakaan'));
 define('MAX_PINJAM', (int)env('MAX_PINJAM', 3));
 define('DENDA_PER_HARI', (int)env('DENDA_PER_HARI', 1000));
