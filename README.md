@@ -1,6 +1,6 @@
-# Sistem Informasi Perpustakaan Sekolah
+# Sistem Informasi Perpustakaan
 
-Aplikasi perpustakaan berbasis web **PHP Native + MySQL** untuk sekolah. Dibangun dengan arsitektur sederhana tanpa framework, cocok untuk lingkungan belajar dan kebutuhan operasional perpustakaan sekolah.
+Aplikasi perpustakaan berbasis web **PHP Native + MySQL**. Dibangun dengan arsitektur sederhana tanpa framework, cocok untuk lingkungan belajar dan kebutuhan operasional perpustakaan.
 
 ## Fitur
 
