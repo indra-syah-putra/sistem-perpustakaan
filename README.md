@@ -50,7 +50,7 @@ Jika pakai password: `mysql -u root -p < sql/database.sql`
 
 ### 3. Konfigurasi environment & akses
 
-Hapus `.example` dari nama file `.env.example` jadi `.env`, lalu sesuaikan database config (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`). `BASE_URL` di-detect otomatis, tidak perlu diatur.
+Hapus `.example` dari nama file `.env.example` jadi `.env`, lalu sesuaikan database config (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`).
 
 Buka URL di browser.
 
@@ -70,9 +70,6 @@ perpustakaan/
 ├── logout.php              # Logout
 ├── dashboard.php           # Dashboard statistik
 ├── ganti_password.php      # Ganti password user
-├── .env                    # Environment config (tidak di-commit)
-├── .env.example            # Template environment
-├── .env.php                # Loader untuk .env
 ├── config/
 │   └── database.php        # Koneksi PDO, helper, RBAC, CSRF
 ├── includes/
