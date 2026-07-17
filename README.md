@@ -17,7 +17,7 @@ Aplikasi perpustakaan berbasis web **PHP Native + MySQL** untuk sekolah. Dibangu
 - **Ganti Password**
 - **Rate Limiting Login** — 5 percobaan, lockout 15 menit
 - **CSRF Protection**
-- **Auto-detect BASE_URL** — Work dari subfolder (`localhost/perpustakaan`) maupun Laragon domain (`perpustakaan.test`)
+- **Auto-detect BASE_URL** — Tidak perlu konfigurasi manual, work dari subfolder maupun domain
 - **UI Responsive** — Vanilla CSS + Bootstrap Icons
 
 ## Persyaratan Sistem
@@ -50,14 +50,7 @@ Jika pakai password: `mysql -u root -p < sql/database.sql`
 
 ### 3. Konfigurasi environment & akses
 
-Hapus `.example` dari nama file `.env.example` jadi `.env`. `BASE_URL` di-detect otomatis berdasarkan document root, jadi **tidak perlu diatur manual**:
-
-| Cara akses | `BASE_URL` (auto) |
-|------------|-----------|
-| `http://perpustakaan.test/` | `""` (kosong) |
-| `http://localhost/perpustakaan/` | `/perpustakaan` |
-
-Kalau perlu override manual, isi `BASE_URL` di `.env` (contoh: `BASE_URL=/myapp`).
+Hapus `.example` dari nama file `.env.example` jadi `.env`, lalu sesuaikan database config (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`). `BASE_URL` di-detect otomatis, tidak perlu diatur.
 
 Buka URL di browser.
 
