@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
+require_role(['admin']);
 
 $db = getConnection();
 $error = '';
@@ -10,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $nama = trim($_POST['nama_lengkap'] ?? '');
     $password = $_POST['password'] ?? '';
-    $role = $_POST['role'] ?? 'petugas';
+    $role = in_array($_POST['role'] ?? '', ['admin', 'petugas']) ? $_POST['role'] : 'petugas';
 
     if (!$username || !$nama || !$password) {
         $error = 'Semua field harus diisi';
@@ -24,12 +26,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: index.php');
             exit;
         } catch (PDOException $e) {
-            $error = 'Gagal: ' . ($e->getCode() == 23000 ? 'Username sudah ada' : $e->getMessage());
+            $error = ($e->getCode() == 23000 ? 'Username sudah ada' : 'Terjadi kesalahan. Silakan coba lagi.');
         }
     }
 }
 
-require_role(['admin']);
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/header.php';
 
 $db = getConnection();
 
-$stat = $db->query("SELECT * FROM v_statistik")->fetch();
+$stat = $db->query("SELECT * FROM v_statistik")->fetch() ?: [];
 
 $peminjaman_terbaru = $db->query("
     SELECT p.*, a.nama AS anggota, b.judul AS buku 
@@ -21,35 +21,34 @@ $stok_menipis = $db->query("
 
 <div class="page-header">
     <h4><i class="bi bi-grid-1x2"></i> Dashboard</h4>
-    <span style="font-size:0.82rem;color:#6b7280;"><?= date('d M Y') ?></span>
 </div>
 
 <div class="stats-grid">
     <div class="stat-item">
         <div class="stat-icon blue"><i class="bi bi-book"></i></div>
         <div class="stat-info">
-            <div class="num"><?= $stat['total_buku'] ?></div>
+            <div class="num"><?= (int)($stat['total_buku'] ?? 0) ?></div>
             <div class="lbl">Total Buku</div>
         </div>
     </div>
     <div class="stat-item">
         <div class="stat-icon green"><i class="bi bi-people"></i></div>
         <div class="stat-info">
-            <div class="num"><?= $stat['total_anggota_aktif'] ?></div>
+            <div class="num"><?= (int)($stat['total_anggota_aktif'] ?? 0) ?></div>
             <div class="lbl">Anggota Aktif</div>
         </div>
     </div>
     <div class="stat-item">
         <div class="stat-icon orange"><i class="bi bi-arrow-right-circle"></i></div>
         <div class="stat-info">
-            <div class="num"><?= $stat['buku_dipinjam'] ?></div>
+            <div class="num"><?= (int)($stat['buku_dipinjam'] ?? 0) ?></div>
             <div class="lbl">Sedang Dipinjam</div>
         </div>
     </div>
     <div class="stat-item">
         <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
         <div class="stat-info">
-            <div class="num"><?= $stat['peminjaman_terlambat'] ?></div>
+            <div class="num"><?= (int)($stat['peminjaman_terlambat'] ?? 0) ?></div>
             <div class="lbl">Terlambat</div>
         </div>
     </div>
@@ -99,7 +98,7 @@ $stok_menipis = $db->query("
                     <?php foreach ($stok_menipis as $b): ?>
                     <tr>
                         <td><?= htmlspecialchars($b['judul']) ?></td>
-                        <td><span class="badge bg-danger"><?= $b['stok'] ?></span></td>
+                        <td><span class="badge bg-danger"><?= (int)$b['stok'] ?></span></td>
                     </tr>
                     <?php endforeach; ?>
                     <?php if (empty($stok_menipis)): ?>

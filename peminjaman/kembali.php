@@ -1,18 +1,20 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
-$success = ''; $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_peminjaman'])) {
     verify_csrf();
+    $id_peminjaman = (int)$_POST['id_peminjaman'];
+    if ($id_peminjaman <= 0) { header('Location: kembali.php'); exit; }
     try {
         $stmt = $db->prepare("SELECT id_buku, tgl_jatuh_tempo, status FROM peminjaman WHERE id_peminjaman = :id");
-        $stmt->execute([':id' => $_POST['id_peminjaman']]);
+        $stmt->execute([':id' => $id_peminjaman]);
         $pinjam = $stmt->fetch();
         if (!$pinjam || $pinjam['status'] != 'dipinjam') {
-            $error = 'Peminjaman tidak ditemukan atau sudah dikembalikan';
+            $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Peminjaman tidak ditemukan atau sudah dikembalikan'];
         } else {
             $st = $db->prepare("SELECT GREATEST(0, DATEDIFF(CURDATE(), :due)) AS telat");
             $st->execute([':due' => $pinjam['tgl_jatuh_tempo']]);
@@ -21,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_peminjaman'])) {
             $status_baru = $denda > 0 ? 'terlambat' : 'dikembalikan';
 
             $db->beginTransaction();
-            $db->prepare("UPDATE peminjaman SET tgl_kembali = CURDATE(), status = :status, denda = :denda WHERE id_peminjaman = :id")->execute([':status' => $status_baru, ':denda' => $denda, ':id' => $_POST['id_peminjaman']]);
+            $db->prepare("UPDATE peminjaman SET tgl_kembali = CURDATE(), status = :status, denda = :denda WHERE id_peminjaman = :id")->execute([':status' => $status_baru, ':denda' => $denda, ':id' => $id_peminjaman]);
             $db->prepare("UPDATE buku SET stok = stok + 1 WHERE id_buku = :id")->execute([':id' => $pinjam['id_buku']]);
             $db->commit();
             if ($denda > 0) {
@@ -29,12 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_peminjaman'])) {
                 header('Location: ' . BASE_URL . '/denda/index.php');
                 exit;
             }
-            $success = 'Dikembalikan tepat waktu';
+            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Dikembalikan tepat waktu'];
+            header('Location: kembali.php');
+            exit;
         }
     } catch (Exception $e) {
         $db->rollBack();
-        $error = 'Gagal: ' . $e->getMessage();
+        $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Terjadi kesalahan. Silakan coba lagi.'];
     }
+    header('Location: kembali.php');
+    exit;
 }
 
 require_once __DIR__ . '/../includes/header.php';
@@ -54,14 +60,12 @@ if ($cari) {
     <a href="index.php" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
 </div>
 
-<?php if ($success): ?><div class="alert alert-success"><?= htmlspecialchars($success) ?></div><?php endif; ?>
-<?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
-
 <div class="card-simple mb-3">
     <div class="card-body">
         <form method="GET" style="display:flex;gap:0.5rem;">
-            <input type="text" name="cari" class="form-control" style="max-width:350px;" placeholder="Cari anggota/buku..." value="<?= htmlspecialchars($cari) ?>">
+            <input type="text" name="cari" class="form-control" style="max-width:350px;" placeholder="Cari pengembalian..." value="<?= htmlspecialchars($cari) ?>">
             <button class="btn btn-primary"><i class="bi bi-search"></i> Cari</button>
+            <?php if ($cari): ?><a href="kembali.php" class="btn btn-outline"><i class="bi bi-x-lg"></i></a><?php endif; ?>
         </form>
     </div>
 </div>

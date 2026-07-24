@@ -14,7 +14,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= APP_NAME ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=3">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=9">
 </head>
 <body>
 
@@ -28,6 +28,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
     </div>
     <div class="topbar-right">
+        <span class="topbar-date"><?= date('d M Y') ?></span>
         <div class="topbar-user dropdown-toggle" onclick="toggleUserMenu()">
             <i class="bi bi-person-circle"></i>
             <span class="topbar-user-name"><?= htmlspecialchars($user['nama_lengkap']) ?></span>
@@ -36,7 +37,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <div class="user-menu" id="userMenu">
             <a href="<?= BASE_URL ?>/ganti_password.php"><i class="bi bi-key"></i> Ganti Password</a>
         </div>
-        <a href="<?= BASE_URL ?>/logout.php" class="topbar-logout"><i class="bi bi-box-arrow-right"></i> Keluar</a>
     </div>
 </div>
 
@@ -61,19 +61,21 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         <?php endif; ?>
 
-        <?php if (has_role('admin')): ?>
-        <li class="menu-label">Administrasi</li>
-        <li><a href="<?= BASE_URL ?>/pengaturan/index.php"><span class="icon"><i class="bi bi-gear"></i></span> Pengaturan</a></li>
-        <li><a href="<?= BASE_URL ?>/users/index.php"><span class="icon"><i class="bi bi-people"></i></span> Pengguna</a></li>
-        <?php endif; ?>
     </ul>
+    <div class="sidebar-bottom">
+        <?php if (has_role('admin')): ?>
+        <a href="<?= BASE_URL ?>/pengaturan/index.php" class="sidebar-btn sidebar-btn-settings"><i class="bi bi-gear"></i> Pengaturan</a>
+        <?php endif; ?>
+        <a href="<?= BASE_URL ?>/logout.php" class="sidebar-btn sidebar-btn-logout"><i class="bi bi-box-arrow-right"></i> Keluar</a>
+        <div class="sidebar-footer">&copy; 2026 All Rights Reserved</div>
+    </div>
 </nav>
 
 <div class="main-content">
 
 <?php if (isset($_SESSION['flash'])): ?>
 <div class="modal-overlay" id="flashModal">
-    <div class="modal-popup flash-popup flash-<?= $_SESSION['flash']['type'] ?>">
+    <div class="modal-popup flash-popup flash-<?= in_array($_SESSION['flash']['type'], ['success','danger','warning']) ? $_SESSION['flash']['type'] : 'warning' ?>">
         <div class="flash-icon-wrap">
             <div class="flash-icon">
                 <?php if ($_SESSION['flash']['type'] === 'success'): ?>

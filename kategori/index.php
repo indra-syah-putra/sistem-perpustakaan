@@ -1,30 +1,47 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tambah'])) {
     verify_csrf();
-    try {
-        $db->prepare("INSERT INTO kategori (nama_kategori) VALUES (:n)")->execute([':n' => $_POST['nama_kategori']]);
-        $_SESSION['flash'] = ['type' => 'success', 'message' => 'Kategori ditambahkan'];
-        header('Location: index.php'); exit;
-    } catch (PDOException $e) { $error = 'Gagal: ' . $e->getMessage(); }
+    $nama = trim($_POST['nama_kategori'] ?? '');
+    if (!$nama) {
+        $error = 'Nama kategori harus diisi';
+    } else {
+        try {
+            $db->prepare("INSERT INTO kategori (nama_kategori) VALUES (:n)")->execute([':n' => $nama]);
+            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Kategori ditambahkan'];
+            header('Location: index.php'); exit;
+        } catch (PDOException $e) { $error = 'Terjadi kesalahan. Silakan coba lagi.'; }
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit'])) {
     verify_csrf();
-    try {
-        $db->prepare("UPDATE kategori SET nama_kategori=:n WHERE id_kategori=:id")->execute([':n' => $_POST['nama_kategori'], ':id' => $_POST['id_kategori']]);
-        $_SESSION['flash'] = ['type' => 'success', 'message' => 'Kategori diupdate'];
-        header('Location: index.php'); exit;
-    } catch (PDOException $e) { $error = 'Gagal: ' . $e->getMessage(); }
+    $nama = trim($_POST['nama_kategori'] ?? '');
+    if (!$nama) {
+        $error = 'Nama kategori harus diisi';
+    } else {
+        try {
+            $db->prepare("UPDATE kategori SET nama_kategori=:n WHERE id_kategori=:id")->execute([':n' => $nama, ':id' => (int)$_POST['id_kategori']]);
+            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Kategori diupdate'];
+            header('Location: index.php'); exit;
+        } catch (PDOException $e) { $error = 'Terjadi kesalahan. Silakan coba lagi.'; }
+    }
 }
 
 if (isset($_GET['hapus'])) {
+    header('Location: index.php');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['hapus'])) {
+    verify_csrf();
     try {
-        $db->prepare("DELETE FROM kategori WHERE id_kategori = :id")->execute([':id' => $_GET['hapus']]);
+        $db->prepare("DELETE FROM kategori WHERE id_kategori = :id")->execute([':id' => (int)$_POST['hapus']]);
         $_SESSION['flash'] = ['type' => 'success', 'message' => 'Kategori dihapus'];
     } catch (PDOException $e) {
         $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Kategori masih dipakai buku'];
@@ -70,10 +87,14 @@ $kategori = $db->query("SELECT k.*, (SELECT COUNT(*) FROM buku_kategori WHERE id
                     <?php foreach ($kategori as $k): ?>
                     <tr>
                         <td><?= htmlspecialchars($k['nama_kategori']) ?></td>
-                        <td><span class="badge bg-primary"><?= $k['jumlah'] ?></span></td>
+                        <td><span class="badge bg-primary"><?= (int)$k['jumlah'] ?></span></td>
                         <td>
-                            <button class="btn btn-sm btn-warning" onclick="edit(<?= $k['id_kategori'] ?>,'<?= htmlspecialchars(addslashes($k['nama_kategori'])) ?>')"><i class="bi bi-pencil"></i></button>
-                            <a href="?hapus=<?= $k['id_kategori'] ?>" class="btn btn-sm btn-danger" data-confirm="Hapus kategori ini?"><i class="bi bi-trash"></i></a>
+                            <button class="btn btn-sm btn-warning" onclick="edit(<?= (int)$k['id_kategori'] ?>,<?= htmlspecialchars(json_encode($k['nama_kategori']), ENT_QUOTES) ?>)"><i class="bi bi-pencil"></i></button>
+                            <form method="POST" style="display:inline;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="hapus" value="<?= (int)$k['id_kategori'] ?>">
+                                <button type="submit" class="btn btn-sm btn-danger" data-confirm="Hapus kategori ini?"><i class="bi bi-trash"></i></button>
+                            </form>
                         </td>
                     </tr>
                     <?php endforeach; ?>

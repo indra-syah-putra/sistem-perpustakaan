@@ -38,7 +38,7 @@ $peminjaman = $stmt->fetchAll();
     <div class="card-head">
         <span>Riwayat Peminjaman</span>
         <form method="GET" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <input type="text" name="search" class="form-control" style="width:auto;min-width:180px;" placeholder="Cari..." value="<?= htmlspecialchars($search) ?>">
+            <input type="text" name="search" class="form-control" style="width:auto;min-width:180px;" placeholder="Cari peminjaman..." value="<?= htmlspecialchars($search) ?>">
             <select name="status" class="form-select" style="width:auto;" onchange="this.form.submit()">
                 <option value="">Semua</option>
                 <option value="dipinjam" <?= $filter_status=='dipinjam'?'selected':'' ?>>Dipinjam</option>
@@ -46,6 +46,7 @@ $peminjaman = $stmt->fetchAll();
                 <option value="terlambat" <?= $filter_status=='terlambat'?'selected':'' ?>>Terlambat</option>
             </select>
             <button class="btn btn-primary btn-sm"><i class="bi bi-search"></i></button>
+            <?php if ($search || $filter_status): ?><a href="index.php" class="btn btn-sm btn-outline"><i class="bi bi-x-lg"></i></a><?php endif; ?>
         </form>
     </div>
     <div class="card-body" style="padding:0;">
@@ -77,11 +78,11 @@ $peminjaman = $stmt->fetchAll();
     <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 1rem;font-size:0.85rem;">
         <div style="color:#6b7280;">Halaman <?= $page ?> dari <?= $total_pages ?> (<?= $total ?> data)</div>
         <div style="display:flex;gap:0.25rem;">
-            <?php if ($page > 1): ?><a href="?page=<?= $page-1 ?>&search=<?= urlencode($search) ?>&status=<?= $filter_status ?>" class="btn btn-sm btn-outline">&laquo;</a><?php endif; ?>
+            <?php if ($page > 1): ?><a href="?page=<?= $page-1 ?>&search=<?= urlencode($search) ?>&status=<?= urlencode($filter_status) ?>" class="btn btn-sm btn-outline">&laquo;</a><?php endif; ?>
             <?php for ($i = max(1, $page-2); $i <= min($total_pages, $page+2); $i++): ?>
-            <a href="?page=<?= $i ?>&search=<?= urlencode($search) ?>&status=<?= $filter_status ?>" class="btn btn-sm <?= $i==$page?'btn-primary':'btn-outline' ?>"><?= $i ?></a>
+            <a href="?page=<?= $i ?>&search=<?= urlencode($search) ?>&status=<?= urlencode($filter_status) ?>" class="btn btn-sm <?= $i==$page?'btn-primary':'btn-outline' ?>"><?= $i ?></a>
             <?php endfor; ?>
-            <?php if ($page < $total_pages): ?><a href="?page=<?= $page+1 ?>&search=<?= urlencode($search) ?>&status=<?= $filter_status ?>" class="btn btn-sm btn-outline">&raquo;</a><?php endif; ?>
+            <?php if ($page < $total_pages): ?><a href="?page=<?= $page+1 ?>&search=<?= urlencode($search) ?>&status=<?= urlencode($filter_status) ?>" class="btn btn-sm btn-outline">&raquo;</a><?php endif; ?>
         </div>
     </div>
     <?php endif; ?>

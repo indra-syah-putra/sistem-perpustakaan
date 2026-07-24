@@ -1,20 +1,30 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
 
 // Bayar denda
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bayar'])) {
     verify_csrf();
-    $id = $_POST['bayar'];
+    $id = (int)$_POST['bayar'];
+    if ($id <= 0) { header('Location: index.php'); exit; }
     $st = $db->prepare("SELECT denda FROM peminjaman WHERE id_peminjaman = :id");
     $st->execute([':id' => $id]);
     $row = $st->fetch();
     if ($row) {
-        $db->prepare("INSERT INTO pembayaran_denda (id_peminjaman, jumlah, tgl_bayar, keterangan) VALUES (:id, :jml, CURDATE(), 'Pembayaran via menu Denda')")->execute([':id' => $id, ':jml' => $row['denda']]);
+        $cek = $db->prepare("SELECT id_bayar FROM pembayaran_denda WHERE id_peminjaman = :id LIMIT 1");
+        $cek->execute([':id' => $id]);
+        if ($cek->fetch()) {
+            $_SESSION['flash'] = ['type' => 'warning', 'message' => 'Denda ini sudah pernah dibayar'];
+        } else {
+            $db->prepare("INSERT INTO pembayaran_denda (id_peminjaman, jumlah, tgl_bayar, keterangan) VALUES (:id, :jml, CURDATE(), 'Pembayaran via menu Denda')")->execute([':id' => $id, ':jml' => $row['denda']]);
+            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Denda berhasil dibayar'];
+        }
+    } else {
+        $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Data peminjaman tidak ditemukan'];
     }
-    $_SESSION['flash'] = ['type' => 'success', 'message' => 'Denda berhasil dibayar'];
     header('Location: index.php');
     exit;
 }

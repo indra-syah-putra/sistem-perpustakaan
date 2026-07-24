@@ -1,39 +1,50 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
-$kategori_list = $db->query("SELECT * FROM kategori ORDER BY nama_kategori")->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    try {
-        $db->beginTransaction();
-        $stmt = $db->prepare("INSERT INTO buku (judul, pengarang, penerbit, tahun_terbit, isbn, stok) VALUES (:judul, :pengarang, :penerbit, :tahun, :isbn, :stok)");
-        $stmt->execute([
-            ':judul' => $_POST['judul'],
-            ':pengarang' => $_POST['pengarang'],
-            ':penerbit' => $_POST['penerbit'] ?: null,
-            ':tahun' => $_POST['tahun_terbit'] ?: null,
-            ':isbn' => $_POST['isbn'] ?: null,
-            ':stok' => $_POST['stok'] ?? 0,
-        ]);
-        $id_buku = $db->lastInsertId();
-        if (!empty($_POST['kategori'])) {
-            $sk = $db->prepare("INSERT INTO buku_kategori (id_buku, id_kategori) VALUES (:b, :k)");
-            foreach ($_POST['kategori'] as $k) $sk->execute([':b' => $id_buku, ':k' => $k]);
+    $judul = trim($_POST['judul'] ?? '');
+    $pengarang = trim($_POST['pengarang'] ?? '');
+    $stok = (int)($_POST['stok'] ?? 0);
+    if (!$judul || !$pengarang) {
+        $error = 'Judul dan Pengarang harus diisi';
+    } elseif ($stok < 0) {
+        $error = 'Stok tidak boleh negatif';
+    } else {
+        try {
+            $db->beginTransaction();
+            $stmt = $db->prepare("INSERT INTO buku (judul, pengarang, penerbit, tahun_terbit, isbn, stok) VALUES (:judul, :pengarang, :penerbit, :tahun, :isbn, :stok)");
+            $stmt->execute([
+                ':judul' => $judul,
+                ':pengarang' => $pengarang,
+                ':penerbit' => $_POST['penerbit'] ?: null,
+                ':tahun' => $_POST['tahun_terbit'] ?: null,
+                ':isbn' => $_POST['isbn'] ?: null,
+                ':stok' => $stok,
+            ]);
+            $id_buku = $db->lastInsertId();
+            if (!empty($_POST['kategori'])) {
+                $sk = $db->prepare("INSERT INTO buku_kategori (id_buku, id_kategori) VALUES (:b, :k)");
+                foreach ($_POST['kategori'] as $k) $sk->execute([':b' => $id_buku, ':k' => (int)$k]);
+            }
+            $db->commit();
+            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Buku berhasil ditambahkan'];
+            header('Location: index.php');
+            exit;
+        } catch (Exception $e) {
+            $db->rollBack();
+            $error = 'Terjadi kesalahan. Silakan coba lagi.';
         }
-        $db->commit();
-        $_SESSION['flash'] = ['type' => 'success', 'message' => 'Buku berhasil ditambahkan'];
-        header('Location: index.php');
-        exit;
-    } catch (Exception $e) {
-        $db->rollBack();
-        $error = 'Gagal: ' . $e->getMessage();
     }
 }
 
 require_once __DIR__ . '/../includes/header.php';
+
+$kategori_list = $db->query("SELECT * FROM kategori ORDER BY nama_kategori")->fetchAll();
 ?>
 
 <div class="page-header">

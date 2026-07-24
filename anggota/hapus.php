@@ -6,24 +6,34 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: index.php');
+    exit;
+}
+
+verify_csrf();
+
 $db = getConnection();
-$id = $_GET['id'] ?? 0;
+$id = (int)($_POST['id'] ?? 0);
 
 try {
-    // Cek apakah anggota punya peminjaman aktif
-    $stmt = $db->prepare("SELECT COUNT(*) FROM peminjaman WHERE id_anggota = :id AND status = 'dipinjam'");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM peminjaman WHERE id_anggota = :id");
     $stmt->execute([':id' => $id]);
-    $aktif = $stmt->fetchColumn();
+    $riwayat = $stmt->fetchColumn();
     
-    if ($aktif > 0) {
-        $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Anggota tidak bisa dihapus karena masih memiliki peminjaman aktif'];
+    if ($riwayat > 0) {
+        $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Anggota tidak bisa dihapus karena masih memiliki riwayat peminjaman'];
     } else {
         $stmt = $db->prepare("DELETE FROM anggota WHERE id_anggota = :id");
         $stmt->execute([':id' => $id]);
         $_SESSION['flash'] = ['type' => 'success', 'message' => 'Anggota berhasil dihapus'];
     }
 } catch (PDOException $e) {
-    $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Gagal menghapus: ' . $e->getMessage()];
+    if ($e->getCode() == 23000) {
+        $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Gagal menghapus: data masih digunakan oleh record lain'];
+    } else {
+        $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Gagal menghapus anggota'];
+    }
 }
 
 header('Location: index.php');

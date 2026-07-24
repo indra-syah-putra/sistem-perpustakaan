@@ -1,37 +1,46 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
-$last = $db->query("SELECT MAX(CAST(SUBSTRING(no_anggota, 4) AS UNSIGNED)) AS last_no FROM anggota")->fetch();
-$next_no = ($last['last_no'] ?? 0) + 1;
-$auto_no = 'AGT' . str_pad($next_no, 3, '0', STR_PAD_LEFT);
-
-$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    try {
-        $stmt = $db->prepare("INSERT INTO anggota (no_anggota, nisn, id_kelas, nama, email, no_telp, alamat, tgl_daftar) VALUES (:no_anggota, :nisn, :id_kelas, :nama, :email, :no_telp, :alamat, :tgl_daftar)");
-        $stmt->execute([
-            ':no_anggota' => $_POST['no_anggota'],
-            ':nisn' => $_POST['nisn'],
-            ':id_kelas' => $_POST['id_kelas'] ?: null,
-            ':nama' => $_POST['nama'],
-            ':email' => $_POST['email'] ?: null,
-            ':no_telp' => $_POST['no_telp'] ?: null,
-            ':alamat' => $_POST['alamat'] ?: null,
-            ':tgl_daftar' => $_POST['tgl_daftar'] ?: date('Y-m-d'),
-        ]);
-        $_SESSION['flash'] = ['type' => 'success', 'message' => 'Anggota berhasil ditambahkan'];
-        header('Location: index.php');
-        exit;
-    } catch (PDOException $e) {
-        $error = 'Gagal: ' . $e->getMessage();
+    $nisn = trim($_POST['nisn'] ?? '');
+    $nama = trim($_POST['nama'] ?? '');
+    if (!$nisn || !$nama) {
+        $error = 'NISN dan Nama harus diisi';
+    } else {
+        $next_no_q = $db->query("SELECT MAX(CAST(SUBSTRING(no_anggota, 4) AS UNSIGNED)) AS last_no FROM anggota")->fetch();
+        $auto_no = 'AGT' . str_pad((($next_no_q['last_no'] ?? 0) + 1), 3, '0', STR_PAD_LEFT);
+        try {
+            $stmt = $db->prepare("INSERT INTO anggota (no_anggota, nisn, id_kelas, nama, email, no_telp, alamat, tgl_daftar) VALUES (:no_anggota, :nisn, :id_kelas, :nama, :email, :no_telp, :alamat, :tgl_daftar)");
+            $stmt->execute([
+                ':no_anggota' => $auto_no,
+                ':nisn' => $nisn,
+                ':id_kelas' => $_POST['id_kelas'] ?: null,
+                ':nama' => $nama,
+                ':email' => $_POST['email'] ?: null,
+                ':no_telp' => $_POST['no_telp'] ?: null,
+                ':alamat' => $_POST['alamat'] ?: null,
+                ':tgl_daftar' => $_POST['tgl_daftar'] ?: date('Y-m-d'),
+            ]);
+            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Anggota berhasil ditambahkan'];
+            header('Location: index.php');
+            exit;
+        } catch (PDOException $e) {
+            $error = 'Terjadi kesalahan. Silakan coba lagi.';
+        }
     }
 }
 
 require_once __DIR__ . '/../includes/header.php';
+
+$last = $db->query("SELECT MAX(CAST(SUBSTRING(no_anggota, 4) AS UNSIGNED)) AS last_no FROM anggota")->fetch();
+$next_no = ($last['last_no'] ?? 0) + 1;
+$auto_no = 'AGT' . str_pad($next_no, 3, '0', STR_PAD_LEFT);
+$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
 ?>
 
 <div class="page-header">

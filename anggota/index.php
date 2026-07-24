@@ -35,8 +35,9 @@ $anggota = $stmt->fetchAll();
     <div class="card-head">
         <span>Daftar Anggota</span>
         <form method="GET" class="search-box">
-            <input type="text" name="search" class="form-control" placeholder="Cari..." value="<?= htmlspecialchars($search) ?>">
+            <input type="text" name="search" class="form-control" placeholder="Cari anggota..." value="<?= htmlspecialchars($search) ?>">
             <button class="btn btn-primary btn-sm"><i class="bi bi-search"></i></button>
+            <?php if ($search): ?><a href="index.php" class="btn btn-sm btn-outline" style="margin-left:0.25rem;"><i class="bi bi-x-lg"></i></a><?php endif; ?>
         </form>
     </div>
     <div class="card-body" style="padding:0;">
@@ -56,7 +57,11 @@ $anggota = $stmt->fetchAll();
                         <td><?= status_badge($a['status']) ?></td>
                         <td>
                             <a href="edit.php?id=<?= $a['id_anggota'] ?>" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
-                            <a href="hapus.php?id=<?= $a['id_anggota'] ?>" class="btn btn-sm btn-danger" data-confirm="Hapus anggota ini?"><i class="bi bi-trash"></i></a>
+                            <form method="POST" action="hapus.php" style="display:inline;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="id" value="<?= (int)$a['id_anggota'] ?>">
+                                <button type="submit" class="btn btn-sm btn-danger" data-confirm="Hapus anggota ini?"><i class="bi bi-trash"></i></button>
+                            </form>
                         </td>
                     </tr>
                     <?php endforeach; ?>

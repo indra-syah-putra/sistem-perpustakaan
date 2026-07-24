@@ -44,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password'])) {
+                session_regenerate_id(true);
                 $_SESSION['user'] = [
                     'id_user' => $user['id_user'],
                     'username' => $user['username'],

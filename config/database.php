@@ -38,7 +38,7 @@ function getConnection() {
             ];
             $db = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            die('Koneksi database gagal: ' . $e->getMessage());
+            die('Koneksi database gagal. Silakan hubungi administrator.');
         }
     }
     

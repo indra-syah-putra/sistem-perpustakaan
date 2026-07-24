@@ -6,8 +6,15 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: index.php');
+    exit;
+}
+
+verify_csrf();
+
 $db = getConnection();
-$id = $_GET['id'] ?? 0;
+$id = (int)($_POST['id'] ?? 0);
 
 try {
     $stmt = $db->prepare("SELECT COUNT(*) FROM peminjaman WHERE id_buku = :id AND status = 'dipinjam'");
@@ -17,12 +24,17 @@ try {
     if ($aktif > 0) {
         $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Buku tidak bisa dihapus karena sedang dipinjam'];
     } else {
+        $db->prepare("DELETE FROM buku_kategori WHERE id_buku = :id")->execute([':id' => $id]);
         $stmt = $db->prepare("DELETE FROM buku WHERE id_buku = :id");
         $stmt->execute([':id' => $id]);
         $_SESSION['flash'] = ['type' => 'success', 'message' => 'Buku berhasil dihapus'];
     }
 } catch (PDOException $e) {
-    $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Gagal menghapus: ' . $e->getMessage()];
+    if ($e->getCode() == 23000) {
+        $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Gagal menghapus: data masih digunakan oleh record lain'];
+    } else {
+        $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Gagal menghapus buku'];
+    }
 }
 
 header('Location: index.php');

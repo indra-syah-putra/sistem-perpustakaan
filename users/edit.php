@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
+require_role(['admin']);
 
 $db = getConnection();
 $error = '';
@@ -20,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $nama = trim($_POST['nama_lengkap'] ?? '');
     $password = $_POST['password'] ?? '';
-    $role = $_POST['role'] ?? 'petugas';
+    $role = in_array($_POST['role'] ?? '', ['admin', 'petugas']) ? $_POST['role'] : 'petugas';
 
     if (!$nama) {
         $error = 'Nama lengkap harus diisi';
@@ -39,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-require_role(['admin']);
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

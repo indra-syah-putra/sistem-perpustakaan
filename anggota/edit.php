@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
 $id = $_GET['id'] ?? 0;
@@ -15,31 +16,37 @@ if (!$a) {
     exit;
 }
 
-$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    try {
-        $stmt = $db->prepare("UPDATE anggota SET nisn=:nisn, id_kelas=:id_kelas, nama=:nama, email=:email, no_telp=:no_telp, alamat=:alamat, status=:status WHERE id_anggota=:id");
-        $stmt->execute([
-            ':nisn' => $_POST['nisn'],
-            ':id_kelas' => $_POST['id_kelas'] ?: null,
-            ':nama' => $_POST['nama'],
-            ':email' => $_POST['email'] ?: null,
-            ':no_telp' => $_POST['no_telp'] ?: null,
-            ':alamat' => $_POST['alamat'] ?: null,
-            ':status' => $_POST['status'],
-            ':id' => $id,
-        ]);
-        $_SESSION['flash'] = ['type' => 'success', 'message' => 'Anggota berhasil diupdate'];
-        header('Location: index.php');
-        exit;
-    } catch (PDOException $e) {
-        $error = 'Gagal: ' . $e->getMessage();
+    $nisn = trim($_POST['nisn'] ?? '');
+    $nama = trim($_POST['nama'] ?? '');
+    if (!$nisn || !$nama) {
+        $error = 'NISN dan Nama harus diisi';
+    } else {
+        try {
+            $stmt = $db->prepare("UPDATE anggota SET nisn=:nisn, id_kelas=:id_kelas, nama=:nama, email=:email, no_telp=:no_telp, alamat=:alamat, status=:status WHERE id_anggota=:id");
+            $stmt->execute([
+                ':nisn' => $nisn,
+                ':id_kelas' => $_POST['id_kelas'] ?: null,
+                ':nama' => $nama,
+                ':email' => $_POST['email'] ?: null,
+                ':no_telp' => $_POST['no_telp'] ?: null,
+                ':alamat' => $_POST['alamat'] ?: null,
+                ':status' => $_POST['status'],
+                ':id' => $id,
+            ]);
+            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Anggota berhasil diupdate'];
+            header('Location: index.php');
+            exit;
+        } catch (PDOException $e) {
+            $error = 'Terjadi kesalahan. Silakan coba lagi.';
+        }
     }
 }
 
 require_once __DIR__ . '/../includes/header.php';
+
+$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
 ?>
 
 <div class="page-header">

@@ -10,7 +10,7 @@ function loadEnv($path = null) {
     $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) {
+        if ($line === '' || $line[0] === '#') {
             continue;
         }
         $parts = explode('=', $line, 2);
@@ -20,8 +20,8 @@ function loadEnv($path = null) {
         $key = trim($parts[0]);
         $value = trim($parts[1]);
         // Remove surrounding quotes
-        if ((str_starts_with($value, '"') && str_ends_with($value, '"')) ||
-            (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
+        if ($value !== '' && (($value[0] === '"' && substr($value, -1) === '"') ||
+            ($value[0] === "'" && substr($value, -1) === "'"))) {
             $value = substr($value, 1, -1);
         }
         $_ENV[$key] = $value;

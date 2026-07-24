@@ -44,6 +44,14 @@ body {
     gap: 0.75rem;
 }
 
+.topbar-date {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+    padding-right: 0.75rem;
+    border-right: 1px solid #e5e7eb;
+}
+
 .topbar-user {
     display: flex;
     align-items: center;
@@ -144,28 +152,6 @@ body {
     border-top: 1px solid #f3f4f6;
 }
 
-.topbar-logout {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.75rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #dc2626;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    text-decoration: none;
-    transition: all 0.15s;
-    cursor: pointer;
-}
-
-.topbar-logout:hover {
-    background: #fee2e2;
-    border-color: #fca5a5;
-    color: #b91c1c;
-}
-
 /* ===== HAMBURGER ===== */
 .hamburger {
     display: none;
@@ -186,7 +172,8 @@ body {
     height: calc(100vh - 56px);
     background: #fff;
     border-right: 1px solid #e8e8e8;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     transition: transform 0.25s ease;
     z-index: 900;
 }
@@ -194,6 +181,68 @@ body {
 .sidebar-menu {
     list-style: none;
     padding: 0.5rem 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.sidebar-bottom {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.sidebar-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.15s;
+}
+
+.sidebar-btn i {
+    font-size: 1rem;
+    width: 1.25rem;
+    text-align: center;
+    opacity: 0.7;
+}
+
+.sidebar-btn-settings {
+    color: #15803d;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+
+.sidebar-btn-settings:hover {
+    color: #166534;
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+.sidebar-btn-logout {
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.sidebar-btn-logout:hover {
+    color: #b91c1c;
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.sidebar-footer {
+    padding: 0.5rem 0.75rem 0;
+    font-size: 0.7rem;
+    color: #c4c4c4;
+    text-align: center;
+    flex-shrink: 0;
 }
 
 .sidebar-menu li a {

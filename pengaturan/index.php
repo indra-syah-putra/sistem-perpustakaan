@@ -1,29 +1,27 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
-
-session_start();
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Anda tidak memiliki akses ke halaman ini'];
-    header('Location: ' . BASE_URL . '/dashboard.php');
-    exit;
-}
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
+require_role(['admin']);
 
 $db = getConnection();
 
-// Auto-buat tabel pengaturan jika belum ada
-$db->exec("CREATE TABLE IF NOT EXISTS pengaturan (
-    id_setting INT AUTO_INCREMENT PRIMARY KEY,
-    nama_setting VARCHAR(50) NOT NULL UNIQUE,
-    nilai_setting VARCHAR(255) NOT NULL,
-    deskripsi VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB");
+// Auto-buat tabel pengaturan jika belum ada (hanya sekali)
+if (!$db->query("SHOW TABLES LIKE 'pengaturan'")->fetch()) {
+    $db->exec("CREATE TABLE pengaturan (
+        id_setting INT AUTO_INCREMENT PRIMARY KEY,
+        nama_setting VARCHAR(50) NOT NULL UNIQUE,
+        nilai_setting VARCHAR(255) NOT NULL,
+        deskripsi VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB");
 
-$db->exec("INSERT IGNORE INTO pengaturan (nama_setting, nilai_setting, deskripsi) VALUES
-    ('denda_per_hari', '1000', 'Denda keterlambatan per hari (Rupiah)'),
-    ('max_pinjam', '3', 'Maksimal buku yang bisa dipinjam per anggota'),
-    ('max_hari_pinjam', '14', 'Maksimal lama peminjaman (hari)')");
+    $db->exec("INSERT INTO pengaturan (nama_setting, nilai_setting, deskripsi) VALUES
+        ('denda_per_hari', '1000', 'Denda keterlambatan per hari (Rupiah)'),
+        ('max_pinjam', '3', 'Maksimal buku yang bisa dipinjam per anggota'),
+        ('max_hari_pinjam', '14', 'Maksimal lama peminjaman (hari)')");
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -47,10 +45,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: index.php');
             exit;
         } catch (PDOException $e) {
-            $error = 'Gagal menyimpan: ' . $e->getMessage();
+            $error = 'Gagal menyimpan. Silakan coba lagi.';
         }
     } else {
-        $error = implode('<br>', $errors);
+        $error = $errors;
     }
 }
 
@@ -68,7 +66,7 @@ foreach ($settings as $s) {
 </div>
 
 <?php if (isset($error)): ?>
-    <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+    <div class="alert alert-danger"><?php if (is_array($error)): ?><?php foreach ($error as $e): ?><?= htmlspecialchars($e) ?><br><?php endforeach; ?><?php else: ?><?= htmlspecialchars($error) ?><?php endif; ?></div>
 <?php endif; ?>
 
 <div class="card-simple" style="max-width:550px;">

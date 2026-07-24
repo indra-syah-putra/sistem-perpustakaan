@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
 $id = $_GET['id'] ?? 0;
@@ -11,34 +12,43 @@ $b = $stmt->fetch();
 
 if (!$b) { $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Buku tidak ditemukan']; header('Location: index.php'); exit; }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
+    $judul = trim($_POST['judul'] ?? '');
+    $pengarang = trim($_POST['pengarang'] ?? '');
+    $stok = (int)($_POST['stok'] ?? 0);
+    if (!$judul || !$pengarang) {
+        $error = 'Judul dan Pengarang harus diisi';
+    } elseif ($stok < 0) {
+        $error = 'Stok tidak boleh negatif';
+    } else {
+        try {
+            $db->beginTransaction();
+            $stmt = $db->prepare("UPDATE buku SET judul=:judul, pengarang=:pengarang, penerbit=:penerbit, tahun_terbit=:tahun, isbn=:isbn, stok=:stok WHERE id_buku=:id");
+            $stmt->execute([
+                ':judul' => $judul, ':pengarang' => $pengarang,
+                ':penerbit' => $_POST['penerbit'] ?: null, ':tahun' => $_POST['tahun_terbit'] ?: null,
+                ':isbn' => $_POST['isbn'] ?: null, ':stok' => $stok, ':id' => $id,
+            ]);
+            $db->prepare("DELETE FROM buku_kategori WHERE id_buku = :id")->execute([':id' => $id]);
+            if (!empty($_POST['kategori'])) {
+                $sk = $db->prepare("INSERT INTO buku_kategori (id_buku, id_kategori) VALUES (:b, :k)");
+                foreach ($_POST['kategori'] as $k) $sk->execute([':b' => $id, ':k' => (int)$k]);
+            }
+            $db->commit();
+            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Buku berhasil diupdate'];
+            header('Location: index.php');
+            exit;
+        } catch (Exception $e) { $db->rollBack(); $error = 'Terjadi kesalahan. Silakan coba lagi.'; }
+    }
+}
+
+require_once __DIR__ . '/../includes/header.php';
+
 $kategori_list = $db->query("SELECT * FROM kategori ORDER BY nama_kategori")->fetchAll();
 $stmtKat = $db->prepare("SELECT id_kategori FROM buku_kategori WHERE id_buku = :id");
 $stmtKat->execute([':id' => $id]);
 $selected = $stmtKat->fetchAll(\PDO::FETCH_COLUMN);
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
-    try {
-        $db->beginTransaction();
-        $stmt = $db->prepare("UPDATE buku SET judul=:judul, pengarang=:pengarang, penerbit=:penerbit, tahun_terbit=:tahun, isbn=:isbn, stok=:stok WHERE id_buku=:id");
-        $stmt->execute([
-            ':judul' => $_POST['judul'], ':pengarang' => $_POST['pengarang'],
-            ':penerbit' => $_POST['penerbit'] ?: null, ':tahun' => $_POST['tahun_terbit'] ?: null,
-            ':isbn' => $_POST['isbn'] ?: null, ':stok' => $_POST['stok'] ?? 0, ':id' => $id,
-        ]);
-        $db->prepare("DELETE FROM buku_kategori WHERE id_buku = :id")->execute([':id' => $id]);
-        if (!empty($_POST['kategori'])) {
-            $sk = $db->prepare("INSERT INTO buku_kategori (id_buku, id_kategori) VALUES (:b, :k)");
-            foreach ($_POST['kategori'] as $k) $sk->execute([':b' => $id, ':k' => $k]);
-        }
-        $db->commit();
-        $_SESSION['flash'] = ['type' => 'success', 'message' => 'Buku berhasil diupdate'];
-        header('Location: index.php');
-        exit;
-    } catch (Exception $e) { $db->rollBack(); $error = 'Gagal: ' . $e->getMessage(); }
-}
-
-require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="page-header">

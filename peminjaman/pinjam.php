@@ -1,50 +1,72 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/header.php';
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
-$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
-$anggota = $db->query("SELECT a.id_anggota, a.no_anggota, a.nisn, a.nama, k.nama_kelas AS kelas FROM anggota a LEFT JOIN kelas k ON a.id_kelas = k.id_kelas WHERE a.status='aktif' ORDER BY k.nama_kelas, a.nama")->fetchAll();
-$buku = $db->query("SELECT id_buku, judul, stok FROM buku WHERE stok>0 ORDER BY judul")->fetchAll();
-
-$success = ''; $error = '';
+$error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
+    $id_buku = (int)$_POST['id_buku'];
+    $id_anggota = (int)$_POST['id_anggota'];
+    if ($id_buku <= 0 || $id_anggota <= 0) {
+        $error = 'Data tidak valid';
+    } else {
     $stok = $db->prepare("SELECT stok FROM buku WHERE id_buku = :id");
-    $stok->execute([':id' => $_POST['id_buku']]);
+    $stok->execute([':id' => $id_buku]);
     $cek_buku = $stok->fetch();
     if (!$cek_buku || $cek_buku['stok'] <= 0) {
         $error = 'Stok buku habis';
     } else {
         $st2 = $db->prepare("SELECT status FROM anggota WHERE id_anggota = :id");
-        $st2->execute([':id' => $_POST['id_anggota']]);
+        $st2->execute([':id' => $id_anggota]);
         $cek_anggota = $st2->fetch();
         if (!$cek_anggota || $cek_anggota['status'] != 'aktif') {
             $error = 'Anggota tidak aktif';
         } else {
-                $st3 = $db->prepare("SELECT COUNT(*) AS jml FROM peminjaman WHERE id_anggota = :id AND status='dipinjam'");
-                $st3->execute([':id' => $_POST['id_anggota']]);
-                $max_pinjam = (int)setting('max_pinjam', MAX_PINJAM);
-                if ($st3->fetch()['jml'] >= $max_pinjam) {
-                    $error = 'Anggota sudah mencapai batas maksimal peminjaman (' . $max_pinjam . ' buku)';
+            $st3 = $db->prepare("SELECT COUNT(*) AS jml FROM peminjaman WHERE id_anggota = :id AND status='dipinjam'");
+            $st3->execute([':id' => $id_anggota]);
+            $max_pinjam = (int)setting('max_pinjam', MAX_PINJAM);
+            if ($st3->fetch()['jml'] >= $max_pinjam) {
+                $error = 'Anggota sudah mencapai batas maksimal peminjaman (' . $max_pinjam . ' buku)';
             } else {
-            try {
-                $db->beginTransaction();
-                $stmt = $db->prepare("INSERT INTO peminjaman (id_anggota, id_buku, tgl_pinjam, tgl_jatuh_tempo, status) VALUES (:anggota, :buku, CURDATE(), DATE_ADD(CURDATE(), INTERVAL :lama DAY), 'dipinjam')");
-                $stmt->execute([':anggota' => $_POST['id_anggota'], ':buku' => $_POST['id_buku'], ':lama' => $_POST['lama_hari'] ?? (int)setting('max_hari_pinjam', MAX_HARI_PINJAM)]);
-                $id = $db->lastInsertId();
-                $db->prepare("UPDATE buku SET stok = stok - 1 WHERE id_buku = :id")->execute([':id' => $_POST['id_buku']]);
-                $db->commit();
-                $success = 'Peminjaman berhasil';
-            } catch (Exception $e) {
-                $db->rollBack();
-                $error = 'Gagal: ' . $e->getMessage();
+                $lama_hari = (int)($_POST['lama_hari'] ?? 0);
+                $max_hari = (int)setting('max_hari_pinjam', MAX_HARI_PINJAM);
+                if ($lama_hari < 1 || $lama_hari > $max_hari) {
+                    $error = 'Lama peminjaman harus antara 1 sampai ' . $max_hari . ' hari';
+                } else {
+                    try {
+                        $db->beginTransaction();
+                        $stmt = $db->prepare("INSERT INTO peminjaman (id_anggota, id_buku, tgl_pinjam, tgl_jatuh_tempo, status) VALUES (:anggota, :buku, CURDATE(), DATE_ADD(CURDATE(), INTERVAL :lama DAY), 'dipinjam')");
+                        $stmt->execute([':anggota' => $id_anggota, ':buku' => $id_buku, ':lama' => $lama_hari]);
+                        $upd = $db->prepare("UPDATE buku SET stok = stok - 1 WHERE id_buku = :id AND stok > 0");
+                        $upd->execute([':id' => $id_buku]);
+                        if ($upd->rowCount() === 0) {
+                            $db->rollBack();
+                            $error = 'Stok buku habis';
+                        } else {
+                            $db->commit();
+                            $_SESSION['flash'] = ['type' => 'success', 'message' => 'Peminjaman berhasil'];
+                            header('Location: pinjam.php');
+                            exit;
+                        }
+                    } catch (Exception $e) {
+                        $db->rollBack();
+                        $error = 'Terjadi kesalahan. Silakan coba lagi.';
+                    }
+                }
             }
         }
     }
+    }
 }
-}
+
+require_once __DIR__ . '/../includes/header.php';
+
+$daftar_kelas = $db->query("SELECT id_kelas, nama_kelas FROM kelas ORDER BY tingkatan")->fetchAll();
+$anggota = $db->query("SELECT a.id_anggota, a.no_anggota, a.nisn, a.nama, k.nama_kelas AS kelas FROM anggota a LEFT JOIN kelas k ON a.id_kelas = k.id_kelas WHERE a.status='aktif' ORDER BY k.nama_kelas, a.nama")->fetchAll();
+$buku = $db->query("SELECT id_buku, judul, stok FROM buku WHERE stok>0 ORDER BY judul")->fetchAll();
 ?>
 
 <div class="page-header">
@@ -52,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <a href="index.php" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
 </div>
 
-<?php if ($success): ?><div class="alert alert-success"><?= htmlspecialchars($success) ?></div><?php endif; ?>
 <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
@@ -60,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="card-simple">
     <div class="card-head">Form Peminjaman</div>
     <div class="card-body">
-        <form method="POST">
+        <form method="POST" id="pinjamForm">
             <?= csrf_field() ?>
             <div class="form-group">
                 <label>Kelas</label>
@@ -93,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <select name="id_buku" id="id_buku" class="search-select-hidden" required>
                         <option value="">-- Pilih --</option>
                         <?php foreach ($buku as $b): ?>
-                        <option value="<?= $b['id_buku'] ?>"><?= htmlspecialchars($b['judul']) ?> (stok: <?= $b['stok'] ?>)</option>
+                        <option value="<?= $b['id_buku'] ?>"><?= htmlspecialchars($b['judul']) ?> (stok: <?= (int)$b['stok'] ?>)</option>
                         <?php endforeach; ?>
                     </select>
                     <div class="search-select-dropdown" id="bukuDropdown"></div>
@@ -110,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-document.querySelector('form').addEventListener('submit', function(e) {
+document.getElementById('pinjamForm').addEventListener('submit', function(e) {
     var anggota = document.getElementById('id_anggota');
     var buku = document.getElementById('id_buku');
     if (!anggota.value || !buku.value) {

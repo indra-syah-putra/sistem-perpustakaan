@@ -35,8 +35,9 @@ $buku = $stmt->fetchAll();
     <div class="card-head">
         <span>Daftar Buku</span>
         <form method="GET" class="search-box">
-            <input type="text" name="search" class="form-control" placeholder="Cari..." value="<?= htmlspecialchars($search) ?>">
+            <input type="text" name="search" class="form-control" placeholder="Cari buku..." value="<?= htmlspecialchars($search) ?>">
             <button class="btn btn-primary btn-sm"><i class="bi bi-search"></i></button>
+            <?php if ($search): ?><a href="index.php" class="btn btn-sm btn-outline" style="margin-left:0.25rem;"><i class="bi bi-x-lg"></i></a><?php endif; ?>
         </form>
     </div>
     <div class="card-body" style="padding:0;">
@@ -51,10 +52,14 @@ $buku = $stmt->fetchAll();
                         <td><?= htmlspecialchars($b['judul']) ?></td>
                         <td><?= htmlspecialchars($b['pengarang']) ?></td>
                         <td><?= htmlspecialchars($b['kategori'] ?: '-') ?></td>
-                        <td><span class="badge bg-<?= $b['stok']<=2?'danger':($b['stok']<=5?'warning':'success') ?>"><?= $b['stok'] ?></span></td>
+                        <td><span class="badge bg-<?= $b['stok']<=2?'danger':($b['stok']<=5?'warning':'success') ?>"><?= (int)$b['stok'] ?></span></td>
                         <td>
                             <a href="edit.php?id=<?= $b['id_buku'] ?>" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
-                            <a href="hapus.php?id=<?= $b['id_buku'] ?>" class="btn btn-sm btn-danger" data-confirm="Hapus buku ini?"><i class="bi bi-trash"></i></a>
+                            <form method="POST" action="hapus.php" style="display:inline;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="id" value="<?= (int)$b['id_buku'] ?>">
+                                <button type="submit" class="btn btn-sm btn-danger" data-confirm="Hapus buku ini?"><i class="bi bi-trash"></i></button>
+                            </form>
                         </td>
                     </tr>
                     <?php endforeach; ?>

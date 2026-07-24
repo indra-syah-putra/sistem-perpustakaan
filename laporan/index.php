@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (!isset($_SESSION['user'])) { header('Location: ' . BASE_URL . '/login.php'); exit; }
 
 $db = getConnection();
-$tgl_awal = $_GET['tgl_awal'] ?? date('Y-m-d', strtotime('-60 days'));
-$tgl_akhir = $_GET['tgl_akhir'] ?? date('Y-m-d');
+$tgl_awal = preg_replace('/[^0-9\-]/', '', $_GET['tgl_awal'] ?? date('Y-m-d', strtotime('-60 days')));
+$tgl_akhir = preg_replace('/[^0-9\-]/', '', $_GET['tgl_akhir'] ?? date('Y-m-d'));
 
 $stmt = $db->prepare("SELECT p.id_peminjaman, a.no_anggota, a.nisn, a.nama AS anggota, b.judul AS buku, p.tgl_pinjam, p.tgl_jatuh_tempo, p.tgl_kembali, p.status, p.denda FROM peminjaman p JOIN anggota a ON p.id_anggota = a.id_anggota JOIN buku b ON p.id_buku = b.id_buku WHERE p.tgl_pinjam BETWEEN :awal AND :akhir ORDER BY p.tgl_pinjam DESC");
 $stmt->execute([':awal' => $tgl_awal, ':akhir' => $tgl_akhir]);
